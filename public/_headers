@@ -4,3 +4,11 @@
   Cache-Control: no-cache
 /
   Cache-Control: no-cache
+/app.css
+  Cache-Control: no-cache
+/atelier*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
+/enquete*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex

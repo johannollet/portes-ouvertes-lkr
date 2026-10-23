@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Fiche atelier · Portes ouvertes</title>
+<meta name="theme-color" content="#1d1530">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@500;600;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><div class="mark"><small>Invitation</small>Portes<br>ouvertes</div>
+  <div><h1 id="hTitle">Collège Lili Keller Rosenberg</h1><p id="hSub">Fiche atelier des professeurs</p></div></div>
+</div></header>
+<main><div class="wrap" id="view"><div class="empty"><b>Chargement…</b></div></div></main>
+<script>
+/* Page autonome des professeurs : aucune donnée de l'appli n'est chargée ici.
+   Elle envoie seulement la fiche de l'atelier à /api/fiche (code profs). */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cap=s=>s?s[0].toUpperCase()+s.slice(1):"";
+let toastT=null;function toast(msg,ms=4200){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t);}t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,ms);}
+const POLES=["Sciences","Artistique","Littéraire","Club et CDI","Langue","Découverte monde pro","Sport","Administration","Mathématiques","Autres"];
+const POLE_COLORS={"Sciences":"#1f8a70","Artistique":"#c4206f","Littéraire":"#6b3fd1","Club et CDI":"#d9822b","Langue":"#2b6cd9","Découverte monde pro":"#8a5a2b","Sport":"#e0472f","Administration":"#5b6478","Mathématiques":"#0f8fb3","Autres":"#8a8a8a"};
+const poleColor=p=>POLE_COLORS[p]||POLE_COLORS.Autres;
+async function ficheApi(op,extra){const r=await fetch("/api/fiche",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok){const e=new Error(j.error||("Erreur serveur "+r.status));e.status=r.status;throw e;}return j;}
+let INFO={college:"Collège Lili Keller Rosenberg",dateTexte:"samedi 14 novembre 2026",horaires:"9h – 12h",responsable:"M. Nollet"};
+async function loadInfo(){try{const r=await fetch("/api/enquete",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:'{"op":"public"}'});const j=await r.json();if(j&&j.info)INFO={...INFO,...Object.fromEntries(Object.entries(j.info).filter(([,v])=>v))};}catch(e){}
+  $("#hTitle").textContent=INFO.college;$("#hSub").textContent=`Portes ouvertes du ${INFO.dateTexte} · fiche atelier des professeurs`;}
+/* ============ Page professeurs : formulaire atelier ============ */
+const PK="po-lkr-prof";let PS={code:"",mine:[],draft:null};try{Object.assign(PS,JSON.parse(localStorage.getItem(PK)||"{}"));}catch(e){}
+const savePS=()=>{try{localStorage.setItem(PK,JSON.stringify(PS));}catch(e){}};
+const emptyFiche=()=>({nom:"",pole:"",poleAutre:"",description:"",prof:"",email:"",salle:"",acces:"libre",horaires:"",materiel:"",eleves:[{nom:"",prenom:"",classe:""}],besoinEleves:0});
+let PF={fiche:null,id:null,token:null,sent:false,busy:false,err:""};
+async function profInit(){await loadInfo();
+  const q=new URLSearchParams(location.search);const id=q.get("id"),k=q.get("k");
+  if(id&&k){PF.id=id;PF.token=k;$("#view").innerHTML=`<div class="empty"><b>Chargement de ta fiche…</b></div>`;
+    try{const j=await ficheApi("load",{id,token:k});PF.fiche={...emptyFiche(),...j.data};if(!PF.fiche.eleves||!PF.fiche.eleves.length)PF.fiche.eleves=[{nom:"",prenom:"",classe:""}];rememberMine(id,k,PF.fiche.nom);}
+    catch(e){PF.id=null;PF.token=null;PF.fiche=emptyFiche();PF.err="Impossible de charger cette fiche (lien incomplet ou fiche supprimée). Tu peux en remplir une nouvelle.";}}
+  else PF.fiche=PS.draft?{...emptyFiche(),...PS.draft}:emptyFiche();
+  renderProf();}
+function rememberMine(id,token,nom){PS.mine=(PS.mine||[]).filter(x=>x.id!==id);PS.mine.unshift({id,token,nom:nom||"Atelier"});savePS();}
+const editUrl=(id,k)=>`${location.origin}/atelier?id=${encodeURIComponent(id)}&k=${encodeURIComponent(k)}`;
+function collectProf(){const f=PF.fiche,v=$("#view");const g=id=>{const el=v.querySelector("#"+id);return el?el.value:"";};
+  ["nom","poleAutre","description","prof","email","salle","horaires","materiel"].forEach(k=>{const el=v.querySelector("#pf_"+k);if(el)f[k]=el.value;});
+  f.besoinEleves=Math.max(0,parseInt(g("pf_besoin"))||0);
+  f.eleves=[...v.querySelectorAll(".pf-el")].map(r=>({nom:r.querySelector("[data-k=nom]").value,prenom:r.querySelector("[data-k=prenom]").value,classe:r.querySelector("[data-k=classe]").value}));
+  if(!PF.id){PS.draft=f;savePS();}}
+function renderProf(){const v=$("#view");const f=PF.fiche;const c=INFO;
+  if(PF.sent){v.innerHTML=`<div class="pf"><div class="card pf-ok"><div class="pf-check">✓</div><h2>Fiche bien reçue</h2><p>Merci ! « <b>${esc(f.nom)}</b> » est arrivée chez ${esc(c.responsable)} et apparaîtra sur le feuillet d'accueil après validation.</p>
+    <p class="small muted">Pour la modifier plus tard, garde ce lien (il est aussi mémorisé sur cet appareil) :</p><div class="row"><input type="text" readonly id="pfLink" value="${esc(editUrl(PF.id,PF.token))}" style="flex:1;min-width:0"><button class="btn sm" id="pfCopy">Copier</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="pfEdit">Modifier ma fiche</button><button class="btn pri" id="pfNew">Remplir une autre fiche</button></div></div></div>`;
+    $("#pfCopy").onclick=()=>navigator.clipboard.writeText($("#pfLink").value).then(()=>toast("Lien copié."),()=>{$("#pfLink").select();});
+    $("#pfEdit").onclick=()=>{PF.sent=false;renderProf();};$("#pfNew").onclick=()=>{PF={fiche:emptyFiche(),id:null,token:null,sent:false,busy:false,err:""};PS.draft=null;savePS();history.replaceState(null,"",location.pathname);renderProf();};return;}
+  const mine=(PS.mine||[]).filter(x=>x.id!==PF.id);
+  v.innerHTML=`<div class="pf">
+  <div class="pf-head"><span class="pill acc">Professeurs</span><h2>${PF.id?"Modifier ma fiche atelier":"Fiche atelier"}</h2><p class="lead">Portes ouvertes du ${esc(c.dateTexte)}, ${esc(c.horaires)}. Ta fiche arrive directement chez ${esc(c.responsable)} et alimente le feuillet remis aux familles. Tu pourras la modifier après l'envoi.</p></div>
+  ${PF.err?`<div class="alert bad">${esc(PF.err)}</div>`:""}
+  ${mine.length?`<div class="card pf-mine"><b>Tes fiches déjà envoyées :</b> ${mine.map(x=>`<a href="${esc(editUrl(x.id,x.token))}">${esc(x.nom)}</a>`).join(" · ")}</div>`:""}
+  <form id="pfF" novalidate>
+  <section class="card pfs"><div class="pfh"><span class="n">1</span><h3>L'atelier</h3></div>
+    <label class="f">Nom de l'atelier *<input type="text" id="pf_nom" value="${esc(f.nom)}" placeholder="ex. Expériences de chimie, Kahoot de maths…" maxlength="80"></label>
+    <div class="f"><span>Pôle *</span><div class="chips">${POLES.map(p=>`<button type="button" class="chip pole" data-pole="${esc(p)}" aria-pressed="${f.pole===p}"><i style="background:${poleColor(p)}"></i>${esc(p)}</button>`).join("")}</div>
+      ${f.pole==="Autres"?`<input type="text" id="pf_poleAutre" value="${esc(f.poleAutre)}" placeholder="Précise le pôle" style="margin-top:6px">`:""}</div>
+    <label class="f">Présentation pour les familles <span class="small" id="pfDc"></span><textarea id="pf_description" rows="3" maxlength="220" placeholder="Une ou deux phrases qui donnent envie de venir. Elles apparaîtront sur le feuillet d'accueil.">${esc(f.description)}</textarea></label>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">2</span><h3>Organisation</h3></div>
+    <div class="fgrid"><label class="f">Professeur(s) responsable(s) *<input type="text" id="pf_prof" value="${esc(f.prof)}" placeholder="ex. Mme Dupont, M. Martin"></label>
+    <label class="f">Ton e-mail (facultatif)<input type="email" id="pf_email" value="${esc(f.email)}" placeholder="pour te recontacter si besoin"></label></div>
+    <label class="f">Salle souhaitée<input type="text" id="pf_salle" value="${esc(f.salle)}" placeholder="ex. Sciences 3, salle 16, CDI…"><span class="small muted">Pas de salle au 2e étage.</span></label>
+    <div class="f"><span>Fonctionnement</span><div class="seg pf-seg"><button type="button" data-acces="libre" aria-pressed="${f.acces!=="horaires"}">Libre d'accès</button><button type="button" data-acces="horaires" aria-pressed="${f.acces==="horaires"}">Horaires précis</button></div>
+      ${f.acces==="horaires"?`<input type="text" id="pf_horaires" value="${esc(f.horaires)}" placeholder="ex. démonstrations à 9h30, 10h30 et 11h30" style="margin-top:6px">`:""}</div>
+    <label class="f">Matériel nécessaire<textarea id="pf_materiel" rows="2" placeholder="ex. vidéoprojecteur, 4 tables, rallonge…">${esc(f.materiel)}</textarea></label>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">3</span><h3>Élèves qui t'aident</h3></div>
+    <div class="pf-els">${f.eleves.map((e,i)=>`<div class="pf-el"><input type="text" data-k="nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom"><input type="text" data-k="prenom" value="${esc(e.prenom)}" placeholder="Prénom" aria-label="Prénom"><input type="text" data-k="classe" value="${esc(e.classe)}" placeholder="Classe" aria-label="Classe"><button type="button" class="btn ghost sm" data-rm="${i}" aria-label="Retirer">✕</button></div>`).join("")}</div>
+    <div class="row"><button type="button" class="btn sm" id="pfAdd">+ Ajouter un élève</button><span class="sp"></span><label class="row small">Il me faudrait encore <input type="number" id="pf_besoin" min="0" max="20" value="${esc(f.besoinEleves||0)}" style="width:64px"> élève(s)</label></div>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">4</span><h3>Envoi</h3></div>
+    ${PS.code&&!PF.askCode?`<p class="small muted" style="margin:0">Code profs enregistré sur cet appareil. <button type="button" class="btn ghost sm" id="pfChg">Changer</button></p>`:`<label class="f">Code transmis par ${esc(c.responsable)} *<input type="text" id="pf_code" value="" autocomplete="off" maxlength="12" style="max-width:220px"></label>`}
+    <div class="row" style="margin-top:6px"><button class="btn pri lg" id="pfSend" ${PF.busy?"disabled":""}>${PF.busy?"Envoi…":PF.id?"Enregistrer les modifications":"Envoyer ma fiche"}</button><span id="pfMsg" class="small" style="color:var(--bad)"></span></div>
+  </section></form></div>`;
+  const dc=()=>{const t=$("#pf_description");$("#pfDc").textContent=`${t.value.length}/220`;};dc();
+  v.querySelector("#pfF").addEventListener("input",e=>{if(e.target.id==="pf_description")dc();collectProf();});
+  v.querySelectorAll("[data-pole]").forEach(b=>b.onclick=()=>{collectProf();f.pole=b.dataset.pole;renderProf();});
+  v.querySelectorAll("[data-acces]").forEach(b=>b.onclick=()=>{collectProf();f.acces=b.dataset.acces;renderProf();});
+  v.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{collectProf();f.eleves.splice(+b.dataset.rm,1);if(!f.eleves.length)f.eleves.push({nom:"",prenom:"",classe:""});renderProf();});
+  $("#pfAdd").onclick=()=>{collectProf();f.eleves.push({nom:"",prenom:"",classe:""});renderProf();const r=[...v.querySelectorAll(".pf-el")].pop();r&&r.querySelector("input").focus();};
+  const chg=$("#pfChg");if(chg)chg.onclick=()=>{collectProf();PF.askCode=true;renderProf();};
+  $("#pfF").onsubmit=async e=>{e.preventDefault();collectProf();const msg=$("#pfMsg");msg.textContent="";
+    const miss=[!f.nom.trim()&&"le nom",!f.pole&&"le pôle",!f.prof.trim()&&"le professeur"].filter(Boolean);if(miss.length){msg.textContent="Il manque "+miss.join(", ")+".";return;}
+    const ci=$("#pf_code");const code=ci?ci.value.trim():PS.code;if(!code){msg.textContent="Indique le code profs.";return;}
+    PF.busy=true;$("#pfSend").disabled=true;$("#pfSend").textContent="Envoi…";
+    try{const clean={...f,eleves:f.eleves.filter(x=>x.nom.trim()||x.prenom.trim())};const j=await ficheApi("submit",{profCode:code,fiche:clean,id:PF.id||undefined,token:PF.token||undefined});
+      PS.code=code;PF.askCode=false;PF.id=j.id;PF.token=j.token;rememberMine(j.id,j.token,f.nom);PS.draft=null;savePS();PF.sent=true;PF.err="";history.replaceState(null,"",editUrl(j.id,j.token).replace(location.origin,""));}
+    catch(er){if(er.status===401){PS.code="";PF.askCode=true;savePS();PF.busy=false;renderProf();$("#pfMsg").textContent="Code incorrect : vérifie le code transmis.";return;}PF.err="Envoi impossible : "+(er.message||"réessaie dans un instant")+".";}
+    PF.busy=false;renderProf();window.scrollTo({top:0});};
+}
+
+
+
+profInit();
+</script>
+</body></html>
