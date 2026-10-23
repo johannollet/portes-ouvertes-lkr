@@ -56,7 +56,7 @@ nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:v
 nav.tabs .wrap{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav.tabs button{font:600 15px var(--f-display);background:none;border:0;color:var(--muted);padding:13px 14px 10px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-nav.tabs button.live{color:var(--accent)}
+nav.tabs button.livetab{color:var(--accent)}
 main .wrap{padding-block:20px 60px}
 h2{font-family:var(--f-display);font-size:24px;margin:0 0 4px;font-weight:700;text-wrap:balance}
 h3{font-family:var(--f-display);font-size:18px;margin:0;font-weight:700}
@@ -165,6 +165,71 @@ dialog::backdrop{background:rgba(20,10,30,.45)}
 .lockbox .msg{min-height:20px;color:var(--bad);font-size:14px}
 .sync{cursor:pointer;background:none;border:0;font:inherit;color:var(--muted)}
 .dot.busy{background:var(--sun)}
+/* ateliers */
+.pdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;flex:none}
+.chg{border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));background:var(--warn-bg);border-radius:var(--r);padding:10px 12px;display:grid;gap:8px}
+.chg-r{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid color-mix(in srgb,var(--warn) 25%,transparent);padding-top:8px}
+.chg-r s{color:var(--muted)}
+/* page professeurs */
+.pf{max-width:760px;margin:0 auto;display:grid;gap:16px}
+.pf-head h2{font-size:30px;margin-top:6px}
+.pfs{display:grid;gap:14px}
+.pfh{display:flex;gap:10px;align-items:center}.pfh .n{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 15px var(--f-display)}
+.pfs input[type=text],.pfs input[type=email],.pfs textarea{font-size:16px;font-family:var(--f-body);width:100%}
+.chip.pole i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.pf-seg button{padding:9px 14px;font-size:14px}
+.pf-els{display:grid;gap:6px}.pf-el{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,.6fr) auto;gap:6px;align-items:center}
+.pf-mine{font-size:14px}.pf-mine a{color:var(--violet);font-weight:700}
+.pf-ok{text-align:center;display:grid;gap:10px;justify-items:center}.pf-ok .row{justify-content:center;width:100%}
+.pf-check{width:64px;height:64px;border-radius:50%;background:var(--ok);color:var(--card);font-size:34px;display:grid;place-items:center}
+/* éditeur du feuillet */
+.fedit{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:980px){.fedit{grid-template-columns:1fr}}
+.fcol{display:grid;gap:12px;min-width:0}.prevcol{position:sticky;top:60px}
+.fcol details.card{padding:0}.fcol summary{padding:12px 16px;cursor:pointer;list-style:none}.fcol summary::-webkit-details-marker{display:none}
+.fcol summary h3{display:inline;font-size:16px}.fcol summary::after{content:"▾";float:right;color:var(--muted)}
+.dgrid{display:grid;gap:10px;padding:0 16px 16px}
+.dgrid textarea{min-height:0}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line);cursor:pointer}.sw.on{box-shadow:0 0 0 3px var(--ink)}
+.fat-edit{display:grid;gap:4px;max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:14px}
+#fPrev{display:grid;gap:14px}
+.sheetwrap{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 2px 12px rgba(20,10,40,.18)}
+.sheetwrap .sheet{transform-origin:0 0;position:absolute;left:0;top:0}
+.fpanel.over{outline:3px dashed #e0472f;outline-offset:-3px}
+/* feuillet imprimable (rendu volontairement clair, comme le papier) */
+.sheet{width:297mm;height:210mm;display:grid;grid-template-columns:1fr 1fr;background:#fff;color:#1d1530;font-family:"Atkinson Hyperlegible",Arial,sans-serif;line-height:1.38;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+.fpanel{position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.fpanel + .fpanel{border-left:.3mm dashed #d8d0e0}
+.fin{padding:11mm 12mm;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:2.6mm}
+.sheet h1{font-family:"League Spartan","Century Gothic",sans-serif;font-size:2.35em;line-height:1.02;margin:0;color:#1d1530;text-wrap:balance}
+.ft{font-family:"League Spartan","Century Gothic",sans-serif;font-size:1.55em;margin:1.5mm 0 0;color:var(--fa);line-height:1.1}
+.ft::after{content:"";display:block;width:14mm;height:1.2mm;background:var(--fa);margin-top:1.6mm;border-radius:1mm}
+.fphoto{height:44%;background:center/cover no-repeat;flex:none;position:relative}
+.fphoto::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3mm;background:var(--fa)}
+.fphoto.none{height:12mm;background:var(--fa)}
+.fdate{display:inline-block;align-self:flex-start;background:var(--fa);color:#fff;font-weight:700;font-size:.92em;padding:1mm 3mm;border-radius:1mm;letter-spacing:.02em}
+.fmot p{margin:0 0 2mm}.fsig{font-weight:700;color:var(--fa)}
+.fmark{border:.9mm solid #1d1530;align-self:flex-start;padding:2mm 3mm 1.4mm;font-family:"League Spartan",sans-serif;font-weight:800;text-transform:uppercase;line-height:1;font-size:1.25em}
+.fmark small{display:block;color:var(--fa);font-size:.5em;letter-spacing:.3em;margin-bottom:.8mm}
+.fcontact{display:grid;grid-template-columns:auto 1fr;gap:1.4mm 4mm;margin:0}.fcontact dt{font-weight:700;color:var(--fa);font-size:.85em;text-transform:uppercase;letter-spacing:.06em;padding-top:.3mm}.fcontact dd{margin:0}
+.fqr{display:flex;gap:4mm;align-items:center;margin-top:2mm}.fqr img{width:30mm;height:30mm;image-rendering:pixelated}.fqr p{margin:0;font-weight:700}
+.fnotes{margin-top:3mm;display:grid;gap:5.2mm}.fnotes b{color:var(--fa);font-family:"League Spartan",sans-serif;font-size:1.1em}.fnotes i{display:block;border-bottom:.3mm dotted #b9b0c6;height:0}
+.fnote{margin-top:auto;font-style:italic;color:#5c5470}
+.fatouts{margin:0;padding:0;list-style:none;display:grid;gap:1.4mm}.fatouts li{padding-left:5mm;position:relative}.fatouts li::before{content:"";position:absolute;left:0;top:.5em;width:2.2mm;height:2.2mm;border-radius:50%;background:var(--fa)}
+.flang{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.flang div{background:color-mix(in srgb,var(--fa) 8%,#fff);border-radius:1.5mm;padding:2mm 2.6mm;font-size:.92em}.flang b{display:block;color:var(--fa);font-size:1.05em}
+.fsub{margin:0;color:#5c5470;font-size:.95em}
+.fet h4{margin:0 0 1.4mm;font-family:"League Spartan",sans-serif;font-size:1.12em;text-transform:uppercase;letter-spacing:.06em;color:#1d1530;border-bottom:.3mm solid #e4dcea;padding-bottom:.8mm}
+.fat{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:1.8mm 4mm}.fat li{display:flex;gap:2mm;break-inside:avoid}.fat li>i{width:2.4mm;height:2.4mm;border-radius:50%;flex:none;margin-top:1.2mm}
+.fat-h{display:flex;gap:2mm;flex-wrap:wrap;align-items:baseline}.fat b{font-size:1em}.fsalle{font-size:.82em;background:#f1ecf5;border-radius:1mm;padding:0 1.6mm;white-space:nowrap}
+.fat p{margin:.5mm 0 0;font-size:.86em;color:#4a4260}.fh{display:block;font-size:.84em;color:var(--fa);font-weight:700}
+.flegend{margin-top:auto;display:flex;flex-wrap:wrap;gap:1.4mm 4mm;font-size:.8em;color:#5c5470}.flegend i{display:inline-block;width:2.2mm;height:2.2mm;border-radius:50%;margin-right:1.2mm}
+#printArea{display:none}
+@media print{@page{size:A4 landscape;margin:0}
+  html,body{background:#fff!important;padding:0!important;margin:0!important}
+  body.pf-print > *:not(#printArea){display:none!important}
+  body.pf-print #printArea{display:block!important}
+  #printArea .sheet{break-after:page;page-break-after:always}
+  #printArea .fpanel + .fpanel{border-left:0}}
 @media (prefers-reduced-motion:no-preference){.fam,.chip,.btn{transition:border-color .15s,background .15s}}
 </style>
 </head>
@@ -181,8 +246,10 @@ dialog::backdrop{background:rgba(20,10,30,.45)}
   <button role="tab" data-tab="prep">Préparation</button>
   <button role="tab" data-tab="inscr">Inscriptions</button>
   <button role="tab" data-tab="eleves">Élèves</button>
+  <button role="tab" data-tab="ateliers">Ateliers</button>
+  <button role="tab" data-tab="feuillet">Feuillet</button>
   <button role="tab" data-tab="plan">Planning</button>
-  <button role="tab" data-tab="accueil" class="live">Accueil jour J</button>
+  <button role="tab" data-tab="accueil" class="livetab">Accueil jour J</button>
   <button role="tab" data-tab="docs">Documents</button>
 </div></nav>
 <main><div class="wrap" id="view"></div></main>
@@ -231,7 +298,7 @@ const payload=()=>JSON.parse(JSON.stringify({config:S.config,eleves:S.eleves,fam
 function loadLocal(){try{const raw=localStorage.getItem(LS_KEY);if(raw){const o=JSON.parse(raw);S.config={...DEFAULT_CONFIG,...(o.config||{})};COLLS.forEach(c=>S[c]=o[c]||{});}}catch(e){}}
 function writeLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(payload()));}catch(e){toast("Mémoire de l'appareil pleine : exporte une sauvegarde depuis Documents.");}}
 function saveLocal(){writeLocal();scheduleSync();}
-function applyRemote(d){S.config={...DEFAULT_CONFIG,...(d.config||{})};COLLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(d[c]||{})));writeLocal();schedule();}
+function applyRemote(d){S.config={...DEFAULT_CONFIG,...(d.config||{})};COLLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(d[c]||{})));writeLocal();if(typeof migrate==="function")migrate();schedule();}
 const strip=d=>{const x={...d};delete x.id;return x;};
 async function put(c,id,data){S[c][id]={...strip(data),id};schedule();saveLocal();}
 async function putMany(c,entries){entries.forEach(([id,d])=>S[c][id]={...strip(d),id});schedule();saveLocal();}
@@ -284,13 +351,16 @@ async function tryUnlock(code){if(!code)return;const m=$("#lockMsg");m.style.col
   try{const j=await api("login",null,code);ok=!!j.ok;cfg={salt:j.salt,hash:j.hash};}
   catch(e){if(e.code!==401){offline=true;try{ok=!!(SY.cfg&&SY.cfg.salt)&&(await sha(SY.cfg.salt+":"+code))===SY.cfg.hash;}catch(_){ok=false;}}}
   m.style.color="";if(!ok){m.textContent=offline?"Pas de réseau et code inconnu sur cet appareil.":"Code incorrect.";$("#lockIn").value="";return;}
-  SY.code=code;SY.unlocked=true;if(cfg)SY.cfg=cfg;persistSY();$("#lock").hidden=true;$("#lock").innerHTML="";$("#lockBtn").hidden=false;toast(offline?"Déverrouillé (hors ligne)":"Bienvenue !");render();syncNow();}
-function initStore(){loadLocal();seedIfEmpty();LOADED=true;MODE=ONLINE?"sync":"local";render();
+  SY.code=code;SY.unlocked=true;if(cfg)SY.cfg=cfg;persistSY();$("#lock").hidden=true;$("#lock").innerHTML="";$("#lockBtn").hidden=false;toast(offline?"Déverrouillé (hors ligne)":"Bienvenue !");render();syncNow();setTimeout(()=>fetchFiches(true),2500);}
+const SEED_ETAGE=["Rez-de-chaussée","Rez-de-chaussée","Rez-de-chaussée","Rez-de-chaussée","Rez-de-chaussée","Rez-de-chaussée","1er étage","1er étage","1er étage","1er étage","1er étage","1er étage","1er étage","1er étage"];
+function migrate(){let ch=false;Object.values(S.ateliers).forEach(a=>{const m=/^a(\d\d)$/.exec(a.id);if(m&&a.etage===undefined&&SEED_ETAGE[+m[1]]){a.etage=SEED_ETAGE[+m[1]];if(a.horaires==="Libre d'accès"){a.acces="libre";a.horaires="";}if(a.afficher===undefined)a.afficher=true;ch=true;}});if(ch)saveLocal();}
+function initStore(){loadLocal();seedIfEmpty();migrate();LOADED=true;MODE=ONLINE?"sync":"local";render();
   $("#sync").onclick=()=>syncNow();$("#lockBtn").onclick=()=>{SY.unlocked=false;persistSY();showLock();};
   if(!ONLINE){setSync("local");return;}
   setInterval(()=>{if(document.visibilityState==="visible")syncNow();},5000);
+  setInterval(()=>{if(document.visibilityState==="visible"&&["ateliers","feuillet","prep"].includes(UI.tab))fetchFiches(false);},30000);
   window.addEventListener("online",syncNow);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncNow();});
-  if(!SY.unlocked||!SY.code){showLock();return;}$("#lockBtn").hidden=false;syncNow();}
+  if(!SY.unlocked||!SY.code){showLock();return;}$("#lockBtn").hidden=false;syncNow();setTimeout(()=>fetchFiches(true),2500);}
 let rT=null;function schedule(){if(rT)return;rT=requestAnimationFrame(()=>{rT=null;render();});}
 
 /* ============ Outils UI ============ */
@@ -353,7 +423,7 @@ function render(){
   const v=$("#view");
   if(!LOADED){v.innerHTML=`<div class="empty"><b>Chargement des données…</b>Inscriptions, élèves et planning arrivent.</div>`;return;}
   const keep=document.activeElement&&document.activeElement.id;const selS=document.activeElement&&document.activeElement.selectionStart;
-  ({prep:vPrep,inscr:vInscr,eleves:vEleves,plan:vPlan,accueil:vAccueil,docs:vDocs})[UI.tab](v);
+  (({prep:vPrep,inscr:vInscr,eleves:vEleves,ateliers:vAteliers,feuillet:vFeuillet,plan:vPlan,accueil:vAccueil,docs:vDocs})[UI.tab]||vPrep)(v);
   if(keep){const el=document.getElementById(keep);if(el&&el!==document.activeElement){el.focus();try{if(selS!=null)el.setSelectionRange(selS,selS);}catch(e){}}}
 }
 const cap=s=>s?s[0].toUpperCase()+s.slice(1):"";
@@ -370,7 +440,7 @@ const stPill=f=>{const [l,k]=ST[f.statut||"inscrit"];return `<span class="pill $
 /* ---------- Préparation ---------- */
 function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=Object.values(S.eleves);
   const guides=el.filter(isGuide),ateliersEl=el.filter(e=>e.role==="atelier");
-  const assigned=fams.filter(f=>f.eleve||f.elevePrevu).length;const at=Object.values(S.ateliers);const atOk=at.filter(a=>a.ficheRecue).length;
+  const assigned=fams.filter(f=>f.eleve||f.elevePrevu).length;const at=Object.values(S.ateliers);const atOk=at.filter(a=>a.ficheRecue||a.ficheId).length;
   const todos=Object.values(S.taches).sort((a,b)=>(a.ordre??99)-(b.ordre??99));const tDone=todos.filter(t=>t.fait).length;
   const slots=slotsAll();const maxF=Math.max(1,...slots.map(s=>famBySlot(s).length));
   v.innerHTML=`<h2>Préparation</h2><p class="lead">Tout ce qu'il reste à faire avant le ${esc(c.dateTexte)}, en un coup d'œil.</p>
@@ -390,30 +460,304 @@ function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=O
       <form class="row" id="todoF" style="margin-top:10px"><input type="text" id="todoL" placeholder="Nouvelle tâche…" style="flex:1"><input type="date" id="todoD"><button class="btn">Ajouter</button></form>
     </div>
   </div>
-  <div class="card" style="margin-top:16px"><div class="card-h"><h3>Ateliers et pôles</h3><div class="row"><a class="btn sm" href="docs/fiche_atelier_portes_ouvertes.pdf" target="_blank" rel="noopener">Fiche atelier vierge</a><button class="btn sm pri" id="addAt">+ Atelier</button></div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Atelier</th><th>Pôle</th><th>Lieu</th><th>Professeur</th><th>Horaires</th><th>Élèves</th><th>Fiche</th><th></th></tr></thead><tbody>
-    ${at.sort((a,b)=>(a.ordre??99)-(b.ordre??99)).map(a=>{const n=el.filter(e=>e.role==="atelier"&&norm(e.atelier)&&norm(a.nom).includes(norm(e.atelier))).length;return `<tr><td class="name">${esc(a.nom)}</td><td>${esc(a.pole||"")}</td><td>${esc(a.salle||"")}</td><td>${esc(a.prof||"")||'<span class="muted">à compléter</span>'}</td><td class="small">${esc(a.horaires||"")}</td><td>${n||""}</td><td><button class="pill ${a.ficheRecue?'ok':'warn'}" style="border:0;cursor:pointer" data-fiche="${a.id}">${a.ficheRecue?"Reçue":"En attente"}</button></td><td><button class="btn ghost sm" data-editat="${a.id}">Modifier</button></td></tr>`;}).join("")||`<tr><td colspan="8" class="muted">Aucun atelier.</td></tr>`}
-    </tbody></table></div></div>`;
+  <div class="card" style="margin-top:16px"><div class="card-h"><h3>Ateliers et feuillet d'accueil</h3><div class="row"><button class="btn sm" id="goF2">Feuillet</button><button class="btn sm pri" id="goA2">Ateliers</button></div></div>
+    <p class="small muted" style="margin:0 0 8px">${at.length} ateliers · ${at.filter(a=>a.ficheId).length} fiches reçues des professeurs · ${at.filter(a=>pendingCount(a)).length} à valider · ${at.filter(a=>a.afficher!==false).length} sur le feuillet</p>
+    <div class="chips">${atSorted().map(a=>`<button class="chip" data-editat="${a.id}"><span class="pdot" style="background:${poleColor(a.pole)};margin:0"></span>${esc(a.nom)}${pendingCount(a)?' <span class="pill warn">à valider</span>':""}</button>`).join("")}</div></div>`;
   v.querySelectorAll("[data-todo]").forEach(i=>i.onchange=()=>patch("taches",i.dataset.todo,{fait:i.checked}));
   v.querySelectorAll("[data-deltodo]").forEach(b=>b.onclick=()=>del("taches",b.dataset.deltodo));
   $("#todoF").onsubmit=e=>{e.preventDefault();const l=$("#todoL").value.trim();if(!l)return;put("taches",uid(),{label:l,echeance:$("#todoD").value,fait:false,ordre:todos.length+1});};
-  v.querySelectorAll("[data-fiche]").forEach(b=>b.onclick=()=>{const a=S.ateliers[b.dataset.fiche];patch("ateliers",a.id,{ficheRecue:!a.ficheRecue});});
   v.querySelectorAll("[data-editat]").forEach(b=>b.onclick=()=>editAtelier(b.dataset.editat));
-  $("#addAt").onclick=()=>editAtelier(null);
+  $("#goA2").onclick=()=>{UI.tab="ateliers";render();};$("#goF2").onclick=()=>{UI.tab="feuillet";render();};
 }
 const fmtDate=s=>{try{return new Date(s+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"});}catch(e){return s;}};
-function editAtelier(id){const a=id?S.ateliers[id]:{nom:"",pole:"",salle:"",prof:"",materiel:"",horaires:"Libre d'accès",description:"",eleves:"",ficheRecue:false};
-  const P=["Sciences","Artistique","Littéraire","Club et CDI","Langue","Découverte monde pro","Sport","Administration","Mathématiques","Autres"];
-  openDlg(id?"Modifier l'atelier":"Nouvel atelier",`<div class="fgrid"><label class="f">Nom de l'atelier<input type="text" id="aN" value="${esc(a.nom)}"></label>
-  <label class="f">Pôle<select id="aP"><option value=""></option>${P.map(p=>`<option ${a.pole===p?"selected":""}>${p}</option>`).join("")}</select></label>
-  <label class="f">Salle<input type="text" id="aS" value="${esc(a.salle)}"></label><label class="f">Professeur responsable<input type="text" id="aR" value="${esc(a.prof)}"></label>
-  <label class="f">Horaires<input type="text" id="aH" value="${esc(a.horaires)}"></label><label class="f">Matériel<input type="text" id="aM" value="${esc(a.materiel)}"></label></div>
-  <label class="f">Description<textarea id="aD" style="min-height:70px;font-family:var(--f-body);font-size:14px">${esc(a.description)}</textarea></label>
-  <label class="f">Élèves recrutés pour aider<input type="text" id="aE" value="${esc(a.eleves)}"></label>
-  <label class="row small"><input type="checkbox" id="aF" ${a.ficheRecue?"checked":""}> Fiche atelier reçue</label>`,
-  `${id?'<button class="btn ghost" id="aDel" style="color:var(--bad)">Supprimer</button><span class="sp"></span>':""}<button class="btn" data-close>Annuler</button><button class="btn pri" id="aOk">Enregistrer</button>`,d=>{
-    d.querySelector("#aOk").onclick=()=>{const g=k=>d.querySelector(k).value.trim();if(!g("#aN"))return toast("Donne un nom à l'atelier.");put("ateliers",id||uid(),{...a,nom:g("#aN"),pole:g("#aP"),salle:g("#aS"),prof:g("#aR"),horaires:g("#aH"),materiel:g("#aM"),description:g("#aD"),eleves:g("#aE"),ficheRecue:d.querySelector("#aF").checked,ordre:a.ordre??Object.keys(S.ateliers).length+1});d.close();};
-    const x=d.querySelector("#aDel");if(x)x.onclick=async()=>{d.close();if(await ask(`Supprimer l'atelier « ${esc(a.nom)} » ?`,"Supprimer",true))del("ateliers",id);};});}
+/* ============ Ateliers : fiches des professeurs ============ */
+const POLES=["Sciences","Artistique","Littéraire","Club et CDI","Langue","Découverte monde pro","Sport","Administration","Mathématiques","Autres"];
+const POLE_COLORS={"Sciences":"#1f8a70","Artistique":"#c4206f","Littéraire":"#6b3fd1","Club et CDI":"#d9822b","Langue":"#2b6cd9","Découverte monde pro":"#8a5a2b","Sport":"#e0472f","Administration":"#5b6478","Mathématiques":"#0f8fb3","Autres":"#8a8a8a"};
+const poleColor=p=>POLE_COLORS[p]||POLE_COLORS.Autres;
+const FIELDS=["nom","pole","prof","email","salle","acces","horaires","materiel","description","eleves","besoinEleves"];
+const FIELD_LABELS={nom:"Nom",pole:"Pôle",prof:"Professeur",email:"E-mail",salle:"Salle",acces:"Fonctionnement",horaires:"Horaires",materiel:"Matériel",description:"Présentation",eleves:"Élèves",besoinEleves:"Élèves en plus demandés"};
+const DEFAULT_PROF_CODE="2026";
+const elevesList=v=>Array.isArray(v)?v.filter(x=>x&&(x.nom||x.prenom)):[];
+const elevesStr=v=>Array.isArray(v)?elevesList(v).map(x=>`${(x.nom||"").toUpperCase()} ${x.prenom||""}${x.classe?" ("+x.classe+")":""}`.trim()).join(", "):String(v||"");
+const accesStr=a=>a.acces==="horaires"?(a.horaires||"Horaires précis"):(a.acces==="libre"||!a.horaires||/libre/i.test(a.horaires)?"Libre d'accès":a.horaires);
+const valStr=(k,v)=>k==="eleves"?(elevesStr(v)||"—"):k==="acces"?(v==="horaires"?"Horaires précis":"Libre d'accès"):(v===""||v==null?"—":String(v));
+function mapFiche(d){d=d||{};return {nom:String(d.nom||"").trim(),pole:d.pole==="Autres"&&d.poleAutre?String(d.poleAutre).trim():String(d.pole||""),prof:String(d.prof||"").trim(),email:String(d.email||"").trim(),salle:String(d.salle||"").trim(),acces:d.acces==="horaires"?"horaires":"libre",horaires:d.acces==="horaires"?String(d.horaires||"").trim():"",materiel:String(d.materiel||"").trim(),description:String(d.description||"").trim(),eleves:elevesList(d.eleves).map(x=>({nom:String(x.nom||"").trim(),prenom:String(x.prenom||"").trim(),classe:String(x.classe||"").trim()})),besoinEleves:Math.max(0,parseInt(d.besoinEleves)||0)};}
+async function ficheApi(op,extra){const r=await fetch("/api/fiche",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok){const e=new Error(j.error||("Erreur serveur "+r.status));e.status=r.status;throw e;}return j;}
+let FI={at:null,busy:false,err:"",last:0};
+async function fetchFiches(force){if(!ONLINE){FI.err="Les fiches des professeurs arrivent uniquement dans la version en ligne de l'appli.";return;}
+  if(!SY.unlocked||FI.busy)return;if(!force&&Date.now()-FI.last<20000)return;FI.busy=true;FI.last=Date.now();
+  try{const j=await ficheApi("list",{code:SY.code});FI.err="";FI.at=fmt(nowMin());await mergeFiches(j.fiches||[]);}
+  catch(e){FI.err=e.status===401?"Code d'accès refusé : reconnecte-toi.":(e.message||"Récupération impossible");}
+  finally{FI.busy=false;if(["ateliers","feuillet","prep"].includes(UI.tab))schedule();}}
+async function mergeFiches(list){const ign=new Set(S.config.fichesIgnorees||[]);const entries=[];let n=Object.keys(S.ateliers).length;
+  for(const f of list){if(!f||!f.id||ign.has(f.id))continue;const m=mapFiche(f.data);const a=Object.values(S.ateliers).find(x=>x.ficheId===f.id);
+    if(!a){entries.push(["f_"+f.id,{...m,etage:guessEtage(m.salle),afficher:true,ordre:++n,ficheId:f.id,fiche:m,ficheAt:f.updatedAt,changes:{},nouveau:true,ficheRecue:true}]);continue;}
+    if((a.ficheAt||"")>=(f.updatedAt||""))continue;
+    const na={...a,changes:{...(a.changes||{})}};
+    FIELDS.forEach(k=>{const old=a.fiche?a.fiche[k]:undefined,nv=m[k];if(same(nv,old))return;
+      const cur=a[k];const empty=cur==null||cur===""||(Array.isArray(cur)&&!cur.length);
+      if(same(cur,old)||empty){na[k]=nv;delete na.changes[k];}else if(same(cur,nv))delete na.changes[k];else na.changes[k]=nv;});
+    na.fiche=m;na.ficheAt=f.updatedAt;na.ficheRecue=true;entries.push([a.id,na]);}
+  if(entries.length){await putMany("ateliers",entries);toast(`${entries.length} fiche(s) atelier reçue(s) ou mise(s) à jour.`);}}
+function guessEtage(salle){const F=FD();const s=norm(salle);if(!s)return "";const m=s.match(/\b(\d)(\d{2})\b/);if(m){const e=+m[1];return F.etages[e]||"";}return "";}
+const profLink=()=>location.origin+location.pathname.replace(/index\.html$/,"")+"?atelier";
+const profCode=()=>S.config.profCode||DEFAULT_PROF_CODE;
+const profMessage=()=>`Bonjour,\n\nPour les portes ouvertes du ${C().dateTexte}, merci de remplir la fiche de votre atelier en ligne (3 minutes) :\n${profLink()}\nCode : ${profCode()}\n\nVous pourrez la modifier ensuite avec le lien reçu après l'envoi. Les informations alimentent directement le feuillet remis aux familles.\n\nMerci !\n${C().responsable}`;
+const pendingCount=a=>Object.keys(a.changes||{}).length+(a.nouveau?1:0);
+const atSorted=()=>Object.values(S.ateliers).sort((a,b)=>(a.ordre??99)-(b.ordre??99)||norm(a.nom).localeCompare(norm(b.nom)));
+
+function vAteliers(v){fetchFiches(false);const at=atSorted();const F=FD();
+  const recues=at.filter(a=>a.ficheId).length,pend=at.filter(a=>pendingCount(a)),elv=at.reduce((n,a)=>n+elevesList(a.eleves).length,0),shown=at.filter(a=>a.afficher!==false).length;
+  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Ateliers</h2><p class="lead" style="margin:0">Les professeurs remplissent leur fiche en ligne et elle arrive ici. Tu peux tout corriger : ta version reste prioritaire. Si un professeur modifie sa fiche ensuite, tu choisis d'appliquer ou non chaque changement.</p></div>
+    <div class="row"><button class="btn" id="goF">Voir le feuillet</button><button class="btn pri" id="addAt">+ Ajouter un atelier</button></div></div>
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>Formulaire pour les collègues</h3></div>
+      <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:nowrap"><div class="qr" id="profQr" style="padding:6px;flex:none"></div>
+      <div style="display:grid;gap:8px;min-width:0;flex:1">
+        <label class="f">Lien du formulaire<input type="text" id="pLink" readonly value="${esc(profLink())}"></label>
+        <div class="row small"><span>Code profs : <b class="t">${esc(profCode())}</b></span>${S.config.profCode?"":'<span class="pill">code par défaut</span>'}</div>
+        <div class="row"><button class="btn sm pri" id="cpMsg">Copier le message pour les collègues</button><button class="btn sm" id="cpLink">Copier le lien</button><a class="btn sm" href="?atelier" target="_blank" rel="noopener">Ouvrir le formulaire ↗</a></div>
+      </div></div>
+      <details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Changer le code profs</summary><form class="row" id="pcF" style="margin-top:8px"><input type="text" id="pcIn" placeholder="4 à 12 lettres ou chiffres" maxlength="12" style="flex:1"><button class="btn sm">Enregistrer</button></form></details>
+    </div>
+    <div class="card"><div class="card-h"><h3>Suivi des fiches</h3><button class="btn sm" id="refF" ${FI.busy?"disabled":""}>${FI.busy?"Récupération…":"Actualiser"}</button></div>
+      <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+        <div class="kpi"><div class="n">${at.length}</div><div class="l">ateliers · ${shown} sur le feuillet</div></div>
+        <div class="kpi"><div class="n">${recues}</div><div class="l">fiches reçues en ligne</div></div>
+        <div class="kpi"><div class="n" style="color:${pend.length?"var(--warn)":"inherit"}">${pend.length}</div><div class="l">à valider</div></div>
+        <div class="kpi"><div class="n">${elv}</div><div class="l">élèves recrutés par les profs</div></div></div>
+      <p class="small muted" style="margin:10px 0 0">${FI.err?`<span style="color:var(--bad)">${esc(FI.err)}</span>`:FI.at?`Fiches récupérées à ${FI.at}. Nouvelle vérification toutes les 30 s sur cet onglet.`:"Récupération des fiches…"}</p></div>
+  </div>
+  ${pend.length?`<div class="alert" style="margin-top:16px">${pend.length} atelier(s) à valider : ${pend.map(a=>`<b>${esc(a.nom)}</b>`).join(", ")}. Ouvre-les pour accepter ou refuser les informations des professeurs.</div>`:""}
+  <div class="tbl-wrap" style="margin-top:16px"><table><thead><tr><th></th><th>Atelier</th><th>Lieu</th><th>Professeur</th><th>Fonctionnement</th><th>Élèves</th><th>Feuillet</th><th></th></tr></thead><tbody>
+  ${at.map((a,i)=>`<tr><td style="white-space:nowrap"><button class="btn ghost sm" data-up="${a.id}" ${i?"":"disabled"} aria-label="Monter">↑</button><button class="btn ghost sm" data-down="${a.id}" ${i<at.length-1?"":"disabled"} aria-label="Descendre">↓</button></td>
+    <td><div class="name"><span class="pdot" style="background:${poleColor(a.pole)}"></span>${esc(a.nom)}</div><div class="row" style="gap:4px;margin-top:3px">${a.pole?`<span class="small muted">${esc(a.pole)}</span>`:""}${a.nouveau?'<span class="pill acc">Nouvelle fiche</span>':""}${Object.keys(a.changes||{}).length?`<span class="pill warn">${Object.keys(a.changes).length} changement(s) proposé(s)</span>`:""}${a.ficheId?'<span class="pill ok">Fiche prof</span>':`<button class="pill ${a.ficheRecue?"ok":""}" style="border:0;cursor:pointer" data-fiche="${a.id}" title="Clique pour changer">${a.ficheRecue?"Ajouté par toi · infos OK":"Ajouté par toi · à compléter"}</button>`}</div></td>
+    <td>${esc(a.salle||"")}${a.etage?`<div class="small muted">${esc(a.etage)}</div>`:a.salle?"":'<span class="muted">—</span>'}</td><td>${esc(a.prof||"")||'<span class="muted">—</span>'}</td><td class="small">${esc(accesStr(a))}</td>
+    <td class="small">${elevesList(a.eleves).length||(typeof a.eleves==="string"&&a.eleves?"✓":"")}${a.besoinEleves?` <span class="pill warn">+${a.besoinEleves} demandés</span>`:""}</td>
+    <td><input type="checkbox" data-aff="${a.id}" ${a.afficher!==false?"checked":""} aria-label="Afficher sur le feuillet"></td><td><button class="btn ${pendingCount(a)?"pri":"ghost"} sm" data-editat="${a.id}">${pendingCount(a)?"Valider":"Modifier"}</button></td></tr>`).join("")||`<tr><td colspan="8" class="muted">Aucun atelier pour l'instant.</td></tr>`}
+  </tbody></table></div>`;
+  const qb=$("#profQr");if(qb&&typeof qrcode!=="undefined"){try{const cv=qrCanvas(profLink(),3);cv.style.width="96px";cv.style.height="96px";qb.appendChild(cv);}catch(e){}}else if(qb)qb.hidden=true;
+  const copy=(t,ok)=>navigator.clipboard.writeText(t).then(()=>toast(ok),()=>toast("Copie impossible : sélectionne le texte à la main."));
+  $("#cpMsg").onclick=()=>copy(profMessage(),"Message copié : colle-le dans un mail ou sur l'ENT.");$("#cpLink").onclick=()=>copy(profLink(),"Lien copié.");
+  $("#pcF").onsubmit=async e=>{e.preventDefault();const n=$("#pcIn").value.trim();if(!/^[A-Za-z0-9]{4,12}$/.test(n))return toast("Le code profs doit faire 4 à 12 lettres ou chiffres.");
+    try{await ficheApi("profcode",{code:SY.code,newProfCode:n});await putConfig({profCode:n});toast("Code profs changé. Pense à renvoyer le message aux collègues.");}catch(er){toast("Changement impossible : "+er.message);}};
+  $("#refF").onclick=()=>fetchFiches(true).then(()=>render());$("#goF").onclick=()=>{UI.tab="feuillet";render();};$("#addAt").onclick=()=>editAtelier(null);
+  v.querySelectorAll("[data-editat]").forEach(b=>b.onclick=()=>editAtelier(b.dataset.editat));
+  v.querySelectorAll("[data-aff]").forEach(i=>i.onchange=()=>patch("ateliers",i.dataset.aff,{afficher:i.checked}));
+  v.querySelectorAll("[data-fiche]").forEach(b=>b.onclick=()=>{const a=S.ateliers[b.dataset.fiche];patch("ateliers",a.id,{ficheRecue:!a.ficheRecue});});
+  const move=(id,d)=>{const L=atSorted();const i=L.findIndex(x=>x.id===id),j=i+d;if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];putMany("ateliers",L.map((x,k)=>[x.id,{...x,ordre:k+1}]));};
+  v.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(b.dataset.up,-1));v.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>move(b.dataset.down,1));
+}
+function parseEleves(t){return String(t||"").split(/\n|;/).map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^(.*?)[\s,(-]+([3-6]\s*[A-Za-z]{0,2})\)?$/);const body=(m?m[1]:l).replace(/[,(]+$/,"").trim();const cls=m?m[2].replace(/\s/g,"").toUpperCase():"";
+  const parts=body.split(/\s+/);const up=parts.filter(p=>p===p.toUpperCase()&&/[A-ZÀ-Ý]/.test(p));const nom=up.length&&up.length<parts.length?up.join(" "):parts[0];const prenom=up.length&&up.length<parts.length?parts.filter(p=>!up.includes(p)).join(" "):parts.slice(1).join(" ");return {nom,prenom,classe:cls};});}
+function editAtelier(id){const isNew=!id;const a=id?S.ateliers[id]:{nom:"",pole:"",salle:"",etage:"",prof:"",email:"",acces:"libre",horaires:"",materiel:"",description:"",eleves:[],besoinEleves:0,afficher:true,ficheRecue:true};
+  const F=FD();const ch=a.changes||{};const others=atSorted().filter(x=>x.id!==id&&!x.ficheId);
+  const acc=a.acces||(a.horaires&&!/libre/i.test(a.horaires)?"horaires":"libre");
+  openDlg(isNew?"Nouvel atelier":esc(a.nom),`
+  ${a.nouveau?`<div class="alert">Nouvelle fiche envoyée par ${esc(a.prof||"un professeur")}. Vérifie les informations puis enregistre pour la valider.${others.length?`<div class="row" style="margin-top:8px"><select id="mgSel" style="flex:1;min-width:0"><option value="">C'est un atelier déjà dans ma liste…</option>${others.map(o=>`<option value="${o.id}">${esc(o.nom)}</option>`).join("")}</select><button class="btn sm" id="mgBtn">Fusionner</button></div>`:""}</div>`:""}
+  ${Object.keys(ch).length?`<div class="chg"><b>Le professeur a modifié sa fiche :</b>${Object.entries(ch).map(([k,nv])=>`<div class="chg-r"><div><span class="small muted">${FIELD_LABELS[k]||k}</span><div><s>${esc(valStr(k,a[k]))}</s> → <b>${esc(valStr(k,nv))}</b></div></div><div class="row" style="gap:4px"><button class="btn sm ok" data-apply="${k}">Appliquer</button><button class="btn sm" data-keep="${k}">Garder la mienne</button></div></div>`).join("")}</div>`:""}
+  <div class="fgrid"><label class="f">Nom de l'atelier<input type="text" id="aN" value="${esc(a.nom)}"></label>
+  <label class="f">Pôle<select id="aP"><option value=""></option>${[...new Set([...POLES,a.pole].filter(Boolean))].map(p=>`<option ${a.pole===p?"selected":""}>${esc(p)}</option>`).join("")}</select></label>
+  <label class="f">Professeur(s)<input type="text" id="aR" value="${esc(a.prof||"")}"></label><label class="f">E-mail<input type="email" id="aM2" value="${esc(a.email||"")}"></label>
+  <label class="f">Salle<input type="text" id="aS" value="${esc(a.salle||"")}"></label>
+  <label class="f">Étage (feuillet)<select id="aEt"><option value="">— non placé —</option>${F.etages.map(e=>`<option ${a.etage===e?"selected":""}>${esc(e)}</option>`).join("")}</select></label>
+  <label class="f">Fonctionnement<select id="aAc"><option value="libre" ${acc==="libre"?"selected":""}>Libre d'accès</option><option value="horaires" ${acc==="horaires"?"selected":""}>Horaires précis</option></select></label>
+  <label class="f">Horaires précis<input type="text" id="aH" value="${esc(acc==="horaires"?a.horaires||"":"")}" placeholder="ex. 9h30, 10h30, 11h30"></label></div>
+  <label class="f">Présentation pour les familles (feuillet) <span id="aDc" class="small"></span><textarea id="aD" maxlength="260" style="min-height:64px;font-family:var(--f-body);font-size:14px">${esc(a.description||"")}</textarea></label>
+  <label class="f">Matériel nécessaire<input type="text" id="aMat" value="${esc(a.materiel||"")}"></label>
+  <label class="f">Élèves qui aident (un par ligne : NOM Prénom 5C)<textarea id="aE" style="min-height:70px;font-family:var(--f-body);font-size:14px">${esc(Array.isArray(a.eleves)?elevesList(a.eleves).map(x=>`${x.nom} ${x.prenom} ${x.classe}`.trim()).join("\n"):a.eleves||"")}</textarea></label>
+  <div class="row"><label class="f" style="width:170px">Élèves en plus demandés<input type="number" id="aB" min="0" value="${esc(a.besoinEleves||0)}"></label><label class="row small" style="flex:1"><input type="checkbox" id="aAf" ${a.afficher!==false?"checked":""}> Afficher sur le feuillet d'accueil</label></div>`,
+  `${!isNew?'<button class="btn ghost" id="aDel" style="color:var(--bad)">Supprimer</button><span class="sp"></span>':""}<button class="btn" data-close>Annuler</button><button class="btn pri" id="aOk">${a.nouveau?"Valider l'atelier":"Enregistrer"}</button>`,d=>{
+    const dc=()=>{d.querySelector("#aDc").textContent=`${d.querySelector("#aD").value.length}/260`;};dc();d.querySelector("#aD").oninput=dc;
+    const g=k=>d.querySelector(k).value.trim();
+    d.querySelector("#aOk").onclick=()=>{if(!g("#aN"))return toast("Donne un nom à l'atelier.");
+      const elTxt=g("#aE");const prevEl=Array.isArray(a.eleves)?elevesList(a.eleves).map(x=>`${x.nom} ${x.prenom} ${x.classe}`.trim()).join("\n"):String(a.eleves||"");
+      const eleves=elTxt===prevEl?a.eleves:parseEleves(elTxt);const accV=g("#aAc");
+      put("ateliers",id||uid(),{...a,nom:g("#aN"),pole:g("#aP"),prof:g("#aR"),email:g("#aM2"),salle:g("#aS"),etage:g("#aEt"),acces:accV,horaires:accV==="horaires"?g("#aH"):"",description:g("#aD"),materiel:g("#aMat"),eleves,besoinEleves:Math.max(0,parseInt(g("#aB"))||0),afficher:d.querySelector("#aAf").checked,nouveau:false,ficheRecue:a.ficheId?true:(isNew?true:a.ficheRecue),ordre:a.ordre??Object.keys(S.ateliers).length+1});d.close();};
+    d.querySelectorAll("[data-apply]").forEach(b=>b.onclick=async()=>{const k=b.dataset.apply;const c2={...(a.changes||{})};const v2=c2[k];delete c2[k];await patch("ateliers",id,{[k]:v2,changes:c2});editAtelier(id);});
+    d.querySelectorAll("[data-keep]").forEach(b=>b.onclick=async()=>{const c2={...(a.changes||{})};delete c2[b.dataset.keep];await patch("ateliers",id,{changes:c2});editAtelier(id);});
+    const mb=d.querySelector("#mgBtn");if(mb)mb.onclick=async()=>{const tid=d.querySelector("#mgSel").value;if(!tid)return toast("Choisis l'atelier avec lequel fusionner.");const t=S.ateliers[tid];const m=a.fiche||mapFiche({});const n={...t,ficheId:a.ficheId,fiche:m,ficheAt:a.ficheAt,ficheRecue:true,changes:{}};
+      FIELDS.forEach(k=>{const cur=t[k];const empty=cur==null||cur===""||(Array.isArray(cur)&&!cur.length);if(empty)n[k]=m[k];else if(!same(cur,m[k])&&!(k==="acces"))n.changes[k]=m[k];});
+      d.close();await put("ateliers",tid,n);await del("ateliers",id);toast(`Fiche fusionnée avec « ${t.nom} ». Vérifie les changements proposés.`);editAtelier(tid);};
+    const x=d.querySelector("#aDel");if(x)x.onclick=async()=>{d.close();if(await ask(`Supprimer l'atelier « ${esc(a.nom)} » ?${a.ficheId?" La fiche du professeur ne sera plus importée.":""}`,"Supprimer",true)){if(a.ficheId)await putConfig({fichesIgnorees:[...(S.config.fichesIgnorees||[]),a.ficheId]});del("ateliers",id);}};});}
+
+/* ============ Feuillet d'accueil paramétrable ============ */
+const F_DEF={accent:"#c4206f",taille:100,photo:"docs/college.jpg",
+  titre:"Bienvenue au collège Lili Keller Rosenberg",accroche:"Portes ouvertes · samedi 14 novembre 2026",
+  mot:"Chers parents, chers futurs élèves,\n\nLe collège accueille cette année près de 500 élèves mais reste un établissement à taille humaine. La réussite des élèves et leur bien-être sont au cœur des préoccupations de l'ensemble des personnels.\n\nC'est avec plaisir que nous vous ouvrons nos portes pour découvrir les locaux et les activités proposées. Bonne visite !",
+  signature:"Mme Hauguel, principale du collège",
+  titreAtouts:"Le collège vous propose",
+  atouts:"Une classe ULIS\nUne SEGPA (de la 5e à la 3e)\n« Devoirs faits » en 5e, 4e et 3e, et 1 h obligatoire en 6e\nUne section volley (1 h 30 par semaine)\nUne association sportive de près de 200 licenciés : futsal, escalade, volley, badminton, échecs, natation\nDes clubs le midi : jeux de société, théâtre, lecture, chorale\nUne association des parents d'élèves dynamique et écoutée\nUn restaurant scolaire avec sa propre brigade : produits locaux, 3,23 € le repas en forfait semaine (tarif fixé par le Département)",
+  titreLangues:"Les langues au collège",
+  langues:"Anglais : LV1 obligatoire, 4 h par semaine en 6e, 3 h en 5e, 4e et 3e. Option anglais euro en 4e et 3e.\nEspagnol : LV2 au choix, 2 h 30 par semaine en 5e, 4e et 3e.\nAllemand : LV2 au choix, 2 h 30 par semaine en 5e, 4e et 3e.\nNéerlandais : classe bilangue anglais-néerlandais dès la 6e, ou section internationale avec 1 h d'histoire-géographie en néerlandais. Engagement sur 4 ans.\nLatin : 2 h en 5e, 4e et 3e. Engagement sur 3 ans, points bonus au brevet.",
+  titreAteliers:"Le collège à votre rythme",noteAteliers:"Un élève du collège vous accompagne pendant la visite. Les ateliers sont en libre accès, sauf horaires indiqués.",
+  etages:["Rez-de-chaussée","1er étage"],
+  adresse:"104 avenue du Stade, 59250 Halluin",tel:"03 20 94 63 73",mail:"ce.0590091d@ac-lille.fr",site:"college-lili-keller-rosenberg-halluin.59.ac-lille.fr",
+  qr:"site",qrLabel:"Retrouvez toute l'actualité du collège sur notre site",noteDos:"Merci de votre visite ! N'hésitez pas à poser vos questions aux professeurs et aux élèves.",
+  blocs:{photo:true,atouts:true,langues:true,descriptions:true,legende:true,notes:true}};
+const ACCENTS=[["#c4206f","Magenta"],["#6b3fd1","Violet"],["#1f6fb2","Bleu"],["#1f8a70","Vert"],["#d9622b","Orange"],["#1d1530","Encre"]];
+function FD(){const f=S.config.feuillet||{};return {...F_DEF,...f,blocs:{...F_DEF.blocs,...(f.blocs||{})},etages:Array.isArray(f.etages)&&f.etages.length?f.etages:F_DEF.etages};}
+let fSaveT=null;
+function setF(p,live){S.config.feuillet={...(S.config.feuillet||{}),...p};if(live){drawPreview();clearTimeout(fSaveT);fSaveT=setTimeout(saveLocal,700);}else{saveLocal();schedule();}}
+const lines=t=>String(t||"").split(/\n/).map(x=>x.trim()).filter(Boolean);
+function feuilletAteliers(F){const at=atSorted().filter(a=>a.afficher!==false);const groups=F.etages.map(e=>[e,at.filter(a=>a.etage===e)]);const rest=at.filter(a=>!F.etages.includes(a.etage));if(rest.length)groups.push(["Autres lieux",rest]);return groups.filter(g=>g[1].length);}
+function feuilletHTML(F){const fsz=(10*(+F.taille||100)/100).toFixed(2);
+  const qrUrl=F.qr==="evento"?C().eventoUrl:F.qr==="site"&&F.site?(/^https?:/.test(F.site)?F.site:"https://"+F.site):"";let qrImg="";
+  if(qrUrl&&typeof qrcode!=="undefined"){try{qrImg=qrCanvas(qrUrl,6).toDataURL("image/png");}catch(e){}}
+  const groups=feuilletAteliers(F);const usedPoles=[...new Set(groups.flatMap(g=>g[1].map(a=>a.pole)).filter(Boolean))];
+  const para=t=>String(t||"").split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,"<br>")}</p>`).join("");
+  return `<div class="sheet" style="--fa:${esc(F.accent)};font-size:${fsz}pt">
+    <section class="fpanel fback" data-name="Dos (infos pratiques)"><div class="fin">
+      <div class="fmark"><small>Portes ouvertes</small>${esc(C().college.replace(/^Collège\s+/i,""))}</div>
+      <h3 class="ft">Infos pratiques</h3>
+      <dl class="fcontact">${F.adresse?`<dt>Adresse</dt><dd>${esc(F.adresse)}</dd>`:""}${F.tel?`<dt>Téléphone</dt><dd>${esc(F.tel)}</dd>`:""}${F.mail?`<dt>E-mail</dt><dd>${esc(F.mail)}</dd>`:""}${F.site?`<dt>Site</dt><dd>${esc(F.site)}</dd>`:""}</dl>
+      ${qrImg?`<div class="fqr"><img src="${qrImg}" alt=""><p>${esc(F.qrLabel)}</p></div>`:""}
+      ${F.blocs.notes?`<div class="fnotes"><b>Mes notes et questions</b>${"<i></i>".repeat(6)}</div>`:""}
+      ${F.noteDos?`<p class="fnote">${esc(F.noteDos)}</p>`:""}</div></section>
+    <section class="fpanel ffront" data-name="Couverture">
+      ${F.blocs.photo&&F.photo?`<div class="fphoto" style="background-image:url('${esc(F.photo)}')"></div>`:'<div class="fphoto none"></div>'}
+      <div class="fin"><span class="fdate">${esc(F.accroche)}</span><h1>${esc(F.titre)}</h1><div class="fmot">${para(F.mot)}${F.signature?`<p class="fsig">${esc(F.signature)}</p>`:""}</div></div></section>
+  </div>
+  <div class="sheet" style="--fa:${esc(F.accent)};font-size:${fsz}pt">
+    <section class="fpanel" data-name="Intérieur gauche"><div class="fin">
+      ${F.blocs.atouts?`<h3 class="ft">${esc(F.titreAtouts)}</h3><ul class="fatouts">${lines(F.atouts).map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:""}
+      ${F.blocs.langues?`<h3 class="ft">${esc(F.titreLangues)}</h3><div class="flang">${lines(F.langues).map(l=>{const i=l.indexOf(":");const t=i>0?l.slice(0,i).trim():"";const d=i>0?l.slice(i+1).trim():l;return `<div>${t?`<b>${esc(t)}</b>`:""}<span>${esc(d)}</span></div>`;}).join("")}</div>`:""}
+    </div></section>
+    <section class="fpanel" data-name="Intérieur droit (ateliers)"><div class="fin">
+      <h3 class="ft">${esc(F.titreAteliers)}</h3>${F.noteAteliers?`<p class="fsub">${esc(F.noteAteliers)}</p>`:""}
+      ${groups.map(([e,list])=>`<div class="fet"><h4>${esc(e)}</h4><ul class="fat">${list.map(a=>`<li><i style="background:${poleColor(a.pole)}"></i><div><div class="fat-h"><b>${esc(a.nom)}</b>${a.salle?`<span class="fsalle">${esc(a.salle)}</span>`:""}</div>${a.acces==="horaires"&&a.horaires?`<span class="fh">Horaires : ${esc(a.horaires)}</span>`:""}${F.blocs.descriptions&&a.description?`<p>${esc(a.description)}</p>`:""}</div></li>`).join("")}</ul></div>`).join("")||'<p class="fsub">Aucun atelier à afficher : coche « Feuillet » dans l\'onglet Ateliers.</p>'}
+      ${F.blocs.legende&&usedPoles.length?`<div class="flegend">${usedPoles.map(p=>`<span><i style="background:${poleColor(p)}"></i>${esc(p)}</span>`).join("")}</div>`:""}
+    </div></section>
+  </div>`;}
+function drawPreview(){const box=$("#fPrev");if(!box)return;const F=FD();box.innerHTML=feuilletHTML(F).replace(/<div class="sheet"/g,'<div class="sheetwrap"><div class="sheet"').replace(/<\/section>\s*<\/div>/g,"</section></div></div>");
+  const fit=()=>{box.querySelectorAll(".sheetwrap").forEach(w=>{const s=w.querySelector(".sheet");const sc=w.clientWidth/s.offsetWidth;s.style.transform=`scale(${sc})`;w.style.height=(s.offsetHeight*sc)+"px";});};fit();
+  requestAnimationFrame(()=>{fit();const over=[...box.querySelectorAll(".fpanel")].filter(p=>{const i=p.querySelector(".fin");return i&&i.scrollHeight>i.clientHeight+2;});
+    box.querySelectorAll(".fpanel").forEach(p=>p.classList.toggle("over",over.includes(p)));const w=$("#fWarn");if(w){w.hidden=!over.length;w.textContent=over.length?`Texte trop long sur : ${over.map(p=>p.dataset.name).join(", ")}. Raccourcis le texte, retire des descriptions ou réduis la taille du texte.`:"";}});}
+window.addEventListener("resize",()=>{if(UI.tab==="feuillet")drawPreview();});
+function vFeuillet(v){fetchFiches(false);const F=FD();const at=atSorted();
+  const T=(id,label,val,rows)=>`<label class="f">${label}${rows?`<textarea id="${id}" rows="${rows}" style="font-family:var(--f-body);font-size:14px;min-height:0">${esc(val)}</textarea>`:`<input type="text" id="${id}" value="${esc(val)}">`}</label>`;
+  const B=(k,label)=>`<label class="row small"><input type="checkbox" data-bloc="${k}" ${F.blocs[k]?"checked":""}> ${label}</label>`;
+  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Feuillet d'accueil</h2><p class="lead" style="margin:0">Un A4 paysage recto-verso, plié en deux. Les ateliers viennent de l'onglet Ateliers et se mettent à jour avec les fiches des professeurs. Tout le reste se modifie ici et se garde d'une année sur l'autre.</p></div>
+    <div class="row"><button class="btn pri" id="fPrint">Imprimer / Enregistrer en PDF</button></div></div>
+  <div class="alert" id="fWarn" hidden></div>
+  <div class="fedit">
+   <div class="fcol">
+    <details class="card" open><summary><h3>Apparence</h3></summary><div class="dgrid">
+      <div class="f"><span>Couleur principale</span><div class="row" style="gap:6px">${ACCENTS.map(([c,n])=>`<button class="sw ${F.accent===c?"on":""}" data-acc="${c}" style="background:${c}" title="${n}" aria-label="${n}"></button>`).join("")}</div></div>
+      <label class="f">Taille du texte : <b id="tVal">${F.taille}%</b><input type="range" id="f_taille" min="80" max="115" step="5" value="${F.taille}"></label>
+      <div class="f"><span>Photo de couverture</span><div class="row"><button class="btn sm" id="phUp">Changer la photo</button><button class="btn sm" id="phOrig">Photo du collège</button>${B("photo","Afficher")}</div></div></div></details>
+    <details class="card" open><summary><h3>Couverture</h3></summary><div class="dgrid">
+      ${T("f_accroche","Bandeau (date)",F.accroche)}${T("f_titre","Titre",F.titre)}${T("f_mot","Mot d'accueil (ligne vide = nouveau paragraphe)",F.mot,7)}${T("f_signature","Signature",F.signature)}</div></details>
+    <details class="card"><summary><h3>Le collège propose</h3></summary><div class="dgrid">${B("atouts","Afficher ce bloc")}${T("f_titreAtouts","Titre",F.titreAtouts)}${T("f_atouts","Un point par ligne",F.atouts,8)}</div></details>
+    <details class="card"><summary><h3>Langues</h3></summary><div class="dgrid">${B("langues","Afficher ce bloc")}${T("f_titreLangues","Titre",F.titreLangues)}${T("f_langues","Une langue par ligne : « Langue : description »",F.langues,7)}</div></details>
+    <details class="card" open><summary><h3>Ateliers</h3></summary><div class="dgrid">
+      ${T("f_titreAteliers","Titre",F.titreAteliers)}${T("f_noteAteliers","Phrase d'introduction",F.noteAteliers,2)}${T("f_etages","Étages ou zones (un par ligne)",F.etages.join("\n"),2)}
+      <div class="row">${B("descriptions","Présentations des profs")}${B("legende","Légende des pôles")}</div>
+      <div class="fat-edit">${at.map(a=>`<div class="row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" data-aff="${a.id}" ${a.afficher!==false?"checked":""} aria-label="Afficher"><span class="pdot" style="background:${poleColor(a.pole)}"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.nom)}${pendingCount(a)?' <span class="pill warn">à valider</span>':""}</span><select data-et="${a.id}" style="max-width:130px;padding:4px 6px"><option value="">—</option>${F.etages.map(e=>`<option ${a.etage===e?"selected":""}>${esc(e)}</option>`).join("")}</select><button class="btn ghost sm" data-editat="${a.id}">Modifier</button></div>`).join("")}</div>
+      <div class="row"><button class="btn sm" id="goAt">Gérer les ateliers</button><button class="btn sm" id="addAt2">+ Ajouter un atelier</button></div></div></details>
+    <details class="card"><summary><h3>Infos pratiques (dos)</h3></summary><div class="dgrid">
+      ${T("f_adresse","Adresse",F.adresse)}${T("f_tel","Téléphone",F.tel)}${T("f_mail","E-mail",F.mail)}${T("f_site","Site internet",F.site)}
+      <label class="f">QR code<select id="f_qr"><option value="site" ${F.qr==="site"?"selected":""}>Site du collège</option><option value="evento" ${F.qr==="evento"?"selected":""}>Inscription Evento</option><option value="none" ${F.qr==="none"?"selected":""}>Aucun</option></select></label>
+      ${T("f_qrLabel","Texte sous le QR code",F.qrLabel)}${B("notes","Espace « Mes notes » pour les parents")}${T("f_noteDos","Message de fin",F.noteDos,2)}</div></details>
+    <div class="row"><button class="btn sm ghost" id="fReset" style="color:var(--bad)">Revenir aux textes d'origine</button></div>
+   </div>
+   <div class="fcol prevcol"><div class="sec-t" style="margin-top:0">Aperçu · extérieur (dos | couverture) puis intérieur</div><div id="fPrev"></div>
+     <p class="small muted">Impression : A4 paysage, recto-verso en retournant sur le <b>bord court</b>, marges « Aucune », « Graphiques d'arrière-plan » coché. Plie ensuite la feuille en deux.</p></div>
+  </div>`;
+  drawPreview();
+  ["accroche","titre","mot","signature","titreAtouts","atouts","titreLangues","langues","titreAteliers","noteAteliers","adresse","tel","mail","site","qrLabel","noteDos"].forEach(k=>{const el=$("#f_"+k);el.oninput=()=>setF({[k]:el.value},true);});
+  $("#f_etages").oninput=e=>setF({etages:lines(e.target.value)},true);$("#f_etages").onchange=()=>render();
+  $("#f_taille").oninput=e=>{$("#tVal").textContent=e.target.value+"%";setF({taille:+e.target.value},true);};
+  $("#f_qr").onchange=e=>setF({qr:e.target.value},true);
+  v.querySelectorAll("[data-bloc]").forEach(i=>i.onchange=()=>setF({blocs:{...FD().blocs,[i.dataset.bloc]:i.checked}},true));
+  v.querySelectorAll("[data-acc]").forEach(b=>b.onclick=()=>{setF({accent:b.dataset.acc},true);v.querySelectorAll("[data-acc]").forEach(x=>x.classList.toggle("on",x===b));});
+  v.querySelectorAll("[data-aff]").forEach(i=>i.onchange=()=>patch("ateliers",i.dataset.aff,{afficher:i.checked}));
+  v.querySelectorAll("[data-et]").forEach(s=>s.onchange=()=>patch("ateliers",s.dataset.et,{etage:s.value}));
+  v.querySelectorAll("[data-editat]").forEach(b=>b.onclick=()=>editAtelier(b.dataset.editat));
+  $("#goAt").onclick=()=>{UI.tab="ateliers";render();};$("#addAt2").onclick=()=>editAtelier(null);
+  $("#phOrig").onclick=()=>setF({photo:F_DEF.photo,blocs:{...FD().blocs,photo:true}});
+  $("#phUp").onclick=()=>pickFile("image/*",f=>{const img=new Image();const u=URL.createObjectURL(f);img.onload=()=>{const m=1400,sc=Math.min(1,m/Math.max(img.width,img.height));const cv=document.createElement("canvas");cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(u);setF({photo:cv.toDataURL("image/jpeg",.8),blocs:{...FD().blocs,photo:true}});toast("Photo mise à jour.");};img.onerror=()=>toast("Image illisible.");img.src=u;});
+  $("#fReset").onclick=async()=>{if(await ask("Remettre tous les textes et réglages du feuillet par défaut ? Les ateliers ne changent pas.","Réinitialiser",true)){S.config.feuillet={};saveLocal();render();}};
+  $("#fPrint").onclick=printFeuillet;
+}
+function printFeuillet(){let pa=$("#printArea");if(!pa){pa=document.createElement("div");pa.id="printArea";document.body.appendChild(pa);}
+  pa.innerHTML=feuilletHTML(FD());document.body.classList.add("pf-print");
+  const imgs=[...pa.querySelectorAll("img")];const bg=FD().blocs.photo&&FD().photo?new Promise(r=>{const i=new Image();i.onload=i.onerror=r;i.src=FD().photo;}):Promise.resolve();
+  Promise.all([bg,...imgs.map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r;}))]).then(()=>setTimeout(()=>{window.print();},150));
+  const done=()=>{document.body.classList.remove("pf-print");window.removeEventListener("afterprint",done);};window.addEventListener("afterprint",done);}
+
+/* ============ Page professeurs : formulaire atelier ============ */
+const PROF=(()=>{try{return new URLSearchParams(location.search).has("atelier");}catch(e){return false;}})();
+const PK="po-lkr-prof";let PS={code:"",mine:[],draft:null};try{Object.assign(PS,JSON.parse(localStorage.getItem(PK)||"{}"));}catch(e){}
+const savePS=()=>{try{localStorage.setItem(PK,JSON.stringify(PS));}catch(e){}};
+const emptyFiche=()=>({nom:"",pole:"",poleAutre:"",description:"",prof:"",email:"",salle:"",acces:"libre",horaires:"",materiel:"",eleves:[{nom:"",prenom:"",classe:""}],besoinEleves:0});
+let PF={fiche:null,id:null,token:null,sent:false,busy:false,err:""};
+async function profInit(){document.querySelector("nav.tabs").hidden=true;$("#jx").hidden=true;$("#hSub").textContent=`${cap(C().dateTexte)} · fiche atelier des professeurs`;$("#sync").hidden=true;$("#lockBtn").hidden=true;document.title="Fiche atelier · Portes ouvertes";
+  const q=new URLSearchParams(location.search);const id=q.get("id"),k=q.get("k");
+  if(id&&k){PF.id=id;PF.token=k;$("#view").innerHTML=`<div class="empty"><b>Chargement de ta fiche…</b></div>`;
+    try{const j=await ficheApi("load",{id,token:k});PF.fiche={...emptyFiche(),...j.data};if(!PF.fiche.eleves||!PF.fiche.eleves.length)PF.fiche.eleves=[{nom:"",prenom:"",classe:""}];rememberMine(id,k,PF.fiche.nom);}
+    catch(e){PF.id=null;PF.token=null;PF.fiche=emptyFiche();PF.err="Impossible de charger cette fiche (lien incomplet ou fiche supprimée). Tu peux en remplir une nouvelle.";}}
+  else PF.fiche=PS.draft?{...emptyFiche(),...PS.draft}:emptyFiche();
+  renderProf();}
+function rememberMine(id,token,nom){PS.mine=(PS.mine||[]).filter(x=>x.id!==id);PS.mine.unshift({id,token,nom:nom||"Atelier"});savePS();}
+const editUrl=(id,k)=>`${location.origin}${location.pathname}?atelier&id=${encodeURIComponent(id)}&k=${encodeURIComponent(k)}`;
+function collectProf(){const f=PF.fiche,v=$("#view");const g=id=>{const el=v.querySelector("#"+id);return el?el.value:"";};
+  ["nom","poleAutre","description","prof","email","salle","horaires","materiel"].forEach(k=>{const el=v.querySelector("#pf_"+k);if(el)f[k]=el.value;});
+  f.besoinEleves=Math.max(0,parseInt(g("pf_besoin"))||0);
+  f.eleves=[...v.querySelectorAll(".pf-el")].map(r=>({nom:r.querySelector("[data-k=nom]").value,prenom:r.querySelector("[data-k=prenom]").value,classe:r.querySelector("[data-k=classe]").value}));
+  if(!PF.id){PS.draft=f;savePS();}}
+function renderProf(){const v=$("#view");const f=PF.fiche;const c=C();
+  if(PF.sent){v.innerHTML=`<div class="pf"><div class="card pf-ok"><div class="pf-check">✓</div><h2>Fiche bien reçue</h2><p>Merci ! « <b>${esc(f.nom)}</b> » est arrivée chez ${esc(c.responsable)} et apparaîtra sur le feuillet d'accueil après validation.</p>
+    <p class="small muted">Pour la modifier plus tard, garde ce lien (il est aussi mémorisé sur cet appareil) :</p><div class="row"><input type="text" readonly id="pfLink" value="${esc(editUrl(PF.id,PF.token))}" style="flex:1;min-width:0"><button class="btn sm" id="pfCopy">Copier</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="pfEdit">Modifier ma fiche</button><button class="btn pri" id="pfNew">Remplir une autre fiche</button></div></div></div>`;
+    $("#pfCopy").onclick=()=>navigator.clipboard.writeText($("#pfLink").value).then(()=>toast("Lien copié."),()=>{$("#pfLink").select();});
+    $("#pfEdit").onclick=()=>{PF.sent=false;renderProf();};$("#pfNew").onclick=()=>{PF={fiche:emptyFiche(),id:null,token:null,sent:false,busy:false,err:""};PS.draft=null;savePS();history.replaceState(null,"","?atelier");renderProf();};return;}
+  const mine=(PS.mine||[]).filter(x=>x.id!==PF.id);
+  v.innerHTML=`<div class="pf">
+  <div class="pf-head"><span class="pill acc">Professeurs</span><h2>${PF.id?"Modifier ma fiche atelier":"Fiche atelier"}</h2><p class="lead">Portes ouvertes du ${esc(c.dateTexte)}, ${esc(c.horaires)}. Ta fiche arrive directement chez ${esc(c.responsable)} et alimente le feuillet remis aux familles. Tu pourras la modifier après l'envoi.</p></div>
+  ${PF.err?`<div class="alert bad">${esc(PF.err)}</div>`:""}
+  ${mine.length?`<div class="card pf-mine"><b>Tes fiches déjà envoyées :</b> ${mine.map(x=>`<a href="${esc(editUrl(x.id,x.token))}">${esc(x.nom)}</a>`).join(" · ")}</div>`:""}
+  <form id="pfF" novalidate>
+  <section class="card pfs"><div class="pfh"><span class="n">1</span><h3>L'atelier</h3></div>
+    <label class="f">Nom de l'atelier *<input type="text" id="pf_nom" value="${esc(f.nom)}" placeholder="ex. Expériences de chimie, Kahoot de maths…" maxlength="80"></label>
+    <div class="f"><span>Pôle *</span><div class="chips">${POLES.map(p=>`<button type="button" class="chip pole" data-pole="${esc(p)}" aria-pressed="${f.pole===p}"><i style="background:${poleColor(p)}"></i>${esc(p)}</button>`).join("")}</div>
+      ${f.pole==="Autres"?`<input type="text" id="pf_poleAutre" value="${esc(f.poleAutre)}" placeholder="Précise le pôle" style="margin-top:6px">`:""}</div>
+    <label class="f">Présentation pour les familles <span class="small" id="pfDc"></span><textarea id="pf_description" rows="3" maxlength="220" placeholder="Une ou deux phrases qui donnent envie de venir. Elles apparaîtront sur le feuillet d'accueil.">${esc(f.description)}</textarea></label>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">2</span><h3>Organisation</h3></div>
+    <div class="fgrid"><label class="f">Professeur(s) responsable(s) *<input type="text" id="pf_prof" value="${esc(f.prof)}" placeholder="ex. Mme Dupont, M. Martin"></label>
+    <label class="f">Ton e-mail (facultatif)<input type="email" id="pf_email" value="${esc(f.email)}" placeholder="pour te recontacter si besoin"></label></div>
+    <label class="f">Salle souhaitée<input type="text" id="pf_salle" value="${esc(f.salle)}" placeholder="ex. Sciences 3, salle 16, CDI…"><span class="small muted">Pas de salle au 2e étage.</span></label>
+    <div class="f"><span>Fonctionnement</span><div class="seg pf-seg"><button type="button" data-acces="libre" aria-pressed="${f.acces!=="horaires"}">Libre d'accès</button><button type="button" data-acces="horaires" aria-pressed="${f.acces==="horaires"}">Horaires précis</button></div>
+      ${f.acces==="horaires"?`<input type="text" id="pf_horaires" value="${esc(f.horaires)}" placeholder="ex. démonstrations à 9h30, 10h30 et 11h30" style="margin-top:6px">`:""}</div>
+    <label class="f">Matériel nécessaire<textarea id="pf_materiel" rows="2" placeholder="ex. vidéoprojecteur, 4 tables, rallonge…">${esc(f.materiel)}</textarea></label>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">3</span><h3>Élèves qui t'aident</h3></div>
+    <div class="pf-els">${f.eleves.map((e,i)=>`<div class="pf-el"><input type="text" data-k="nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom"><input type="text" data-k="prenom" value="${esc(e.prenom)}" placeholder="Prénom" aria-label="Prénom"><input type="text" data-k="classe" value="${esc(e.classe)}" placeholder="Classe" aria-label="Classe"><button type="button" class="btn ghost sm" data-rm="${i}" aria-label="Retirer">✕</button></div>`).join("")}</div>
+    <div class="row"><button type="button" class="btn sm" id="pfAdd">+ Ajouter un élève</button><span class="sp"></span><label class="row small">Il me faudrait encore <input type="number" id="pf_besoin" min="0" max="20" value="${esc(f.besoinEleves||0)}" style="width:64px"> élève(s)</label></div>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">4</span><h3>Envoi</h3></div>
+    ${PS.code&&!PF.askCode?`<p class="small muted" style="margin:0">Code profs enregistré sur cet appareil. <button type="button" class="btn ghost sm" id="pfChg">Changer</button></p>`:`<label class="f">Code transmis par ${esc(c.responsable)} *<input type="text" id="pf_code" value="" autocomplete="off" maxlength="12" style="max-width:220px"></label>`}
+    <div class="row" style="margin-top:6px"><button class="btn pri lg" id="pfSend" ${PF.busy?"disabled":""}>${PF.busy?"Envoi…":PF.id?"Enregistrer les modifications":"Envoyer ma fiche"}</button><span id="pfMsg" class="small" style="color:var(--bad)"></span></div>
+  </section></form></div>`;
+  const dc=()=>{const t=$("#pf_description");$("#pfDc").textContent=`${t.value.length}/220`;};dc();
+  v.querySelector("#pfF").addEventListener("input",e=>{if(e.target.id==="pf_description")dc();collectProf();});
+  v.querySelectorAll("[data-pole]").forEach(b=>b.onclick=()=>{collectProf();f.pole=b.dataset.pole;renderProf();});
+  v.querySelectorAll("[data-acces]").forEach(b=>b.onclick=()=>{collectProf();f.acces=b.dataset.acces;renderProf();});
+  v.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{collectProf();f.eleves.splice(+b.dataset.rm,1);if(!f.eleves.length)f.eleves.push({nom:"",prenom:"",classe:""});renderProf();});
+  $("#pfAdd").onclick=()=>{collectProf();f.eleves.push({nom:"",prenom:"",classe:""});renderProf();const r=[...v.querySelectorAll(".pf-el")].pop();r&&r.querySelector("input").focus();};
+  const chg=$("#pfChg");if(chg)chg.onclick=()=>{collectProf();PF.askCode=true;renderProf();};
+  $("#pfF").onsubmit=async e=>{e.preventDefault();collectProf();const msg=$("#pfMsg");msg.textContent="";
+    const miss=[!f.nom.trim()&&"le nom",!f.pole&&"le pôle",!f.prof.trim()&&"le professeur"].filter(Boolean);if(miss.length){msg.textContent="Il manque "+miss.join(", ")+".";return;}
+    const ci=$("#pf_code");const code=ci?ci.value.trim():PS.code;if(!code){msg.textContent="Indique le code profs.";return;}
+    PF.busy=true;$("#pfSend").disabled=true;$("#pfSend").textContent="Envoi…";
+    try{const clean={...f,eleves:f.eleves.filter(x=>x.nom.trim()||x.prenom.trim())};const j=await ficheApi("submit",{profCode:code,fiche:clean,id:PF.id||undefined,token:PF.token||undefined});
+      PS.code=code;PF.askCode=false;PF.id=j.id;PF.token=j.token;rememberMine(j.id,j.token,f.nom);PS.draft=null;savePS();PF.sent=true;PF.err="";history.replaceState(null,"",editUrl(j.id,j.token).replace(location.origin,""));}
+    catch(er){if(er.status===401){PS.code="";PF.askCode=true;savePS();PF.busy=false;renderProf();$("#pfMsg").textContent="Code incorrect : vérifie le code transmis.";return;}PF.err="Envoi impossible : "+(er.message||"réessaie dans un instant")+".";}
+    PF.busy=false;renderProf();window.scrollTo({top:0});};
+}
+
 
 /* ---------- Inscriptions ---------- */
 function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
@@ -662,8 +1006,8 @@ async function backStudent(sid){const t=fmt(nowMin());const fs=famList().filter(
 
 /* ---------- Documents ---------- */
 function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").length;
-  const files=[["feuillet_accueil_parents.pdf","th_feuillet-1.png","Feuillet d'accueil des parents",`Plan des pôles par étage, mot de la principale, langues et options. À remettre à chaque famille à l'arrivée${nF?` : <b>${nF} exemplaires</b> au minimum`:""}. Converti depuis ton fichier Publisher.`],
-    ["fiche_atelier_portes_ouvertes.pdf","th_fiche-1.png","Fiche préparation atelier (profs)","À envoyer aux collègues : nom de l'atelier, pôle, salle, matériel, horaires, élèves recrutés. Suis les retours dans Préparation."],
+  const files=[["feuillet_accueil_parents.pdf","th_feuillet-1.png","Ancien feuillet d'accueil (Publisher)",`Plan des pôles par étage, mot de la principale, langues et options. À remettre à chaque famille à l'arrivée${nF?` : <b>${nF} exemplaires</b> au minimum`:""}. Le nouveau feuillet, modifiable et relié aux ateliers, se trouve dans l'onglet <b>Feuillet</b>.`],
+    ["fiche_atelier_portes_ouvertes.pdf","th_fiche-1.png","Fiche atelier papier (secours)","Version papier de la fiche. Les collègues remplissent maintenant la fiche en ligne : lien et code dans l'onglet <b>Ateliers</b>."],
     ["flyers_portes_ouvertes.pdf","th_flyers-1.png","Flyers d'invitation (3 par A4)","Invitation avec QR code d'inscription Evento, à distribuer dans les écoles primaires."]];
   v.innerHTML=`<h2>Documents</h2><p class="lead">Tous les documents des portes ouvertes au même endroit, et ceux que l'outil remplit pour toi.</p>
   <div class="grid g2">${files.map(([f,th,t,d])=>`<div class="card doc"><div class="th" style="background-image:url('docs/${th}')" role="img" aria-label="Aperçu ${esc(t)}"></div><div><h3>${t}</h3><p>${d}</p><div class="row"><a class="btn sm" href="docs/${f}" target="_blank" rel="noopener">Ouvrir</a><button class="btn sm" data-dl="${f}">Télécharger</button></div></div></div>`).join("")}</div>
@@ -752,7 +1096,7 @@ function xlsExport(){if(!window.XLSX)return toast("Excel indisponible, recharge 
   const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});saveFile("portes_ouvertes_export.xlsx",new Blob([out]));}
 
 /* ============ Démarrage ============ */
-initStore();
+if(PROF){loadLocal();LOADED=true;profInit();}else initStore();
 try{if("serviceWorker" in navigator&&location.protocol==="https:"&&window.top===window){const had=!!navigator.serviceWorker.controller;let rl=false;
   navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!rl){rl=true;location.reload();}});
   navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});}}catch(e){}

@@ -4,6 +4,7 @@
 //   get   : { etag? } -> { empty } | { same, etag } | { etag, data }
 //   put   : { data, etag? } -> { etag } | 409 { conflict } si un autre appareil a modifié entre-temps
 //   code  : { newCode } -> change le code d'accès pour tous les appareils
+// Les fiches ateliers des professeurs passent par /api/fiche (fiche.mjs).
 import { getStore } from "@netlify/blobs";
 import crypto from "node:crypto";
 
@@ -50,7 +51,7 @@ export default async (req) => {
         if (typeof b.newCode !== "string" || !/^\d{4,8}$/.test(b.newCode)) return json({ error: "Le code doit faire 4 à 8 chiffres." }, 400);
         const salt = crypto.randomBytes(8).toString("hex");
         const next = { salt, hash: hash(b.newCode, salt) };
-        await store.setJSON("config", next);
+        await store.setJSON("config", { ...cfg, ...next }); // garde le code profs
         return json({ ok: true, ...next });
       }
       default:

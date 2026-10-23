@@ -1,6 +1,6 @@
-const C="portes-ouvertes-lkr-v1";
+const C="portes-ouvertes-lkr-v2";
 const F=["./","index.html","manifest.json","icon-180.png","icon-192.png","icon-512.png",
-  "docs/feuillet_accueil_parents.pdf","docs/fiche_atelier_portes_ouvertes.pdf","docs/flyers_portes_ouvertes.pdf","docs/qrcode_evento.png",
+  "docs/feuillet_accueil_parents.pdf","docs/fiche_atelier_portes_ouvertes.pdf","docs/flyers_portes_ouvertes.pdf","docs/qrcode_evento.png","docs/college.jpg",
   "docs/th_feuillet-1.png","docs/th_fiche-1.png","docs/th_flyers-1.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
