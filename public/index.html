@@ -1067,17 +1067,15 @@ function proposeFamily(sid,msg){const L=waitingFams().sort((a,b)=>((b.attend===s
 
 /* ---------- Documents ---------- */
 function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").length;
-  const files=[["feuillet_accueil_parents.pdf","th_feuillet-1.png","Ancien feuillet d'accueil (Publisher)",`Plan des pôles par étage, mot de la principale, langues et options. À remettre à chaque famille à l'arrivée${nF?` : <b>${nF} exemplaires</b> au minimum`:""}. Le nouveau feuillet, modifiable et relié aux ateliers, se trouve dans l'onglet <b>Feuillet</b>.`],
-    ["fiche_atelier_portes_ouvertes.pdf","th_fiche-1.png","Fiche atelier papier (secours)","Version papier de la fiche. Les collègues remplissent maintenant la fiche en ligne : lien et code dans l'onglet <b>Ateliers</b>."],
-    ["flyers_portes_ouvertes.pdf","th_flyers-1.png","Flyers d'invitation (3 par A4)","Invitation avec QR code d'inscription Evento, à distribuer dans les écoles primaires."]];
-  v.innerHTML=`<h2>Documents</h2><p class="lead">Tous les documents des portes ouvertes au même endroit, et ceux que l'outil remplit pour toi.</p>
-  <div class="grid g2">${files.map(([f,th,t,d])=>`<div class="card doc"><div class="th" style="background-image:url('docs/${th}')" role="img" aria-label="Aperçu ${esc(t)}"></div><div><h3>${t}</h3><p>${d}</p><div class="row"><a class="btn sm" href="docs/${f}" target="_blank" rel="noopener">Ouvrir</a><button class="btn sm" data-dl="${f}">Télécharger</button></div></div></div>`).join("")}</div>
+  const files=[["flyers_portes_ouvertes.pdf","th_flyers-1.png","Flyers d'invitation (3 par A4)","Invitation avec QR code d'inscription Evento, à distribuer dans les écoles primaires."]];
+  v.innerHTML=`<h2>Documents</h2><p class="lead">Les documents des portes ouvertes au même endroit, et ceux que l'outil remplit pour toi. Le feuillet d'accueil se prépare dans l'onglet <b>Feuillet</b>, les fiches ateliers dans l'onglet <b>Ateliers</b>.</p>
+  <div class="grid">${files.map(([f,th,t,d])=>`<div class="card doc"><div class="th" style="background-image:url('docs/${th}')" role="img" aria-label="Aperçu ${esc(t)}"></div><div><h3>${t}</h3><p>${d}</p><div class="row"><a class="btn sm" href="docs/${f}" target="_blank" rel="noopener">Ouvrir</a><button class="btn sm" data-dl="${f}">Télécharger</button></div></div></div>`).join("")}</div>
   <div class="grid g2" style="margin-top:16px">
     <div class="card"><div class="card-h"><h3>QR code d'inscription Evento</h3></div>
       <div class="row" style="align-items:flex-start;gap:16px"><div class="qr" id="qrBox"></div><div style="flex:1;min-width:220px;display:grid;gap:8px">
         <label class="f">Lien Evento<input type="text" id="evUrl" value="${esc(c.eventoUrl)}"></label>
         <div class="row"><button class="btn sm" id="qrPng">Télécharger le QR (PNG)</button><button class="btn sm" id="qrAff">Affiche A4 (PDF)</button><button class="btn sm" id="copyUrl">Copier le lien</button></div>
-        <p class="small muted" style="margin:0">QR généré à partir du lien : il reste juste si tu changes de sondage. Ton QR d'origine est aussi disponible : <button class="btn ghost sm" data-dl="qrcode_evento.png" style="padding:0;text-decoration:underline">télécharger</button>.</p></div></div></div>
+        <p class="small muted" style="margin:0">QR généré à partir du lien : il reste juste si tu changes de sondage.</p></div></div></div>
     <div class="card"><div class="card-h"><h3>Documents générés par l'outil</h3></div>
       <div style="display:grid;gap:8px">
         <button class="btn" id="g1" style="justify-content:space-between">Convocations élèves remplies (PDF, 2 par page)<span class="muted small">${Object.keys(S.eleves).length} élèves</span></button>
