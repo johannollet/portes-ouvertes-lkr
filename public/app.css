@@ -208,6 +208,13 @@ dialog::backdrop{background:rgba(20,10,30,.45)}
 .fat-h{display:flex;gap:2mm;flex-wrap:wrap;align-items:baseline}.fat b{font-size:1em}.fsalle{font-size:.82em;background:#f1ecf5;border-radius:1mm;padding:0 1.6mm;white-space:nowrap}
 .fat p{margin:.5mm 0 0;font-size:.86em;color:#4a4260}.fh{display:block;font-size:.84em;color:var(--fa);font-weight:700}
 .flegend{margin-top:auto;display:flex;flex-wrap:wrap;gap:1.4mm 4mm;font-size:.8em;color:#5c5470}.flegend i{display:inline-block;width:2.2mm;height:2.2mm;border-radius:50%;margin-right:1.2mm}
+/* prochains départs */
+.deprows{display:grid;gap:6px}
+.deprow{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1.2fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.deprow.lv1{border-left:5px solid var(--warn);background:color-mix(in srgb,var(--warn) 6%,var(--card))}
+.deprow.lv2{border-left:5px solid var(--bad);background:color-mix(in srgb,var(--bad) 6%,var(--card))}
+.deprow .dep-a{justify-content:flex-end;gap:6px}
+@media (max-width:860px){.deprow{grid-template-columns:52px minmax(0,1fr)}.deprow .dep-s,.deprow .dep-a{grid-column:2}.deprow .dep-a{justify-content:flex-start}}
 /* enquête */
 .rbar{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;margin:5px 0}
 .rbar .rl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rbar .rt{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}.rbar .rt i{display:block;height:100%;background:var(--accent);border-radius:5px}

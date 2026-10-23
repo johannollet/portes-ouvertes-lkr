@@ -47,7 +47,7 @@ const DEFAULT_CONFIG={
   college:"Collège Lili Keller Rosenberg", ville:"Halluin", date:"2026-11-14", dateTexte:"samedi 14 novembre 2026", horaires:"9h – 12h",
   eventoUrl:"https://evento.renater.fr/survey/inscriptions-portes-ouvertes-college-lili-keller-rosenberg-14-novembre-2026-zd2hovpw",
   slots:["9h00","9h15","9h30","9h45","10h00","10h15","10h30","10h45","11h00","11h15","11h30","11h45"],
-  dureeVisite:60, battement:5, avance:10, maxVisites:3, maxFamilles:2, strategie:"repartir",
+  dureeVisite:60, battement:5, avance:10, delaiRetard:10, maxVisites:3, maxFamilles:2, strategie:"repartir",
   heureAteliers:"8h50", heureReserve:"8h50", heureFin:"12h20",
   responsable:"M. Nollet", signature:"M. Nollet et l'équipe enseignante.", dateCourrier:"", lieuRdv:"auprès de M. Nollet"
 };
@@ -64,7 +64,7 @@ const norm=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(
 function tmin(s){if(s==null||s==="")return null;if(typeof s==="number"){ if(s<1) return Math.round(s*1440); return null;}const m=String(s).match(/(\d{1,2})\s*[hH:]\s*(\d{2})?/);if(!m)return null;const h=+m[1],mi=+(m[2]||0);if(h>23||mi>59)return null;return h*60+mi;}
 const fmt=m=>m==null?"—":Math.floor(m/60)+"h"+String(m%60).padStart(2,"0");
 const isJ=()=>new Date().toLocaleDateString("sv-SE")===S.config.date;
-const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+const nowMin=()=>{if(window.__now!=null)return window.__now;const d=new Date();return d.getHours()*60+d.getMinutes();};
 const C=()=>S.config;
 const fullName=e=>`${(e.nom||"").trim()} ${(e.prenom||"").trim()}`.trim();
 const niveau=c=>{const m=String(c||"").match(/[3456]/);return m?+m[0]:9;};
@@ -780,81 +780,151 @@ function optStudents(f,cur){const c=C(),t=tmin(f.slot),busy=busyMap(new Set([f.i
   .sort((a,b)=>(b.e.id===cur)-(a.e.id===cur)||(b.ok-a.ok)||(a.n-b.n)||norm(a.e.nom).localeCompare(norm(b.e.nom)))
   .map(({e,ok,same,n})=>`<option value="${e.id}" ${e.id===cur?"selected":""}>${esc(fullName(e))} (${esc(e.classe)})${e.id===cur?"":ok?` · libre${n?", "+n+" visite(s)":""}`:same?" · déjà 1 famille à cette heure":" · occupé"}</option>`).join("");}
 
+
 /* ---------- Accueil jour J ---------- */
 let liveTimer=null;
+const delaiRetard=()=>+(C().delaiRetard??10);
+const famActive=f=>["inscrit","arrive"].includes(f.statut||"inscrit");
+function inVisitMap(){const m={};famList().forEach(f=>{if(f.statut==="visite"&&f.eleve)(m[f.eleve]=m[f.eleve]||[]).push(f);});return m;}
+const prenomOf=sid=>titleCase((S.eleves[sid]||{}).prenom||"l'élève");
+/* état d'un élève à cet instant */
+function stuState(sid,iv){const e=S.eleves[sid];const c=C(),now=nowMin();if(!e)return {k:"none",label:"aucun élève prévu",cls:"bad"};iv=iv||inVisitMap();
+  if(e.presence==="absent")return {k:"absent",label:"absent",cls:"bad"};
+  if(iv[sid]){const dep=tmin(iv[sid][0].hDepart);const back=dep+c.dureeVisite;const late=now-back;return {k:"visite",label:`en visite depuis ${iv[sid][0].hDepart}, retour ${late>0?`prévu à ${fmt(back)} (+${late} min)`:`vers ${fmt(back)}`}`,cls:late>0?"bad":"warn",back,late};}
+  if(e.presence!=="present"){const h=convoc(e).h;return {k:"attendu",label:h!=null&&now>h?`pas encore arrivé (convoqué à ${fmt(h)})`:"pas encore arrivé",cls:h!=null&&now>h+5?"bad":"warn"};}
+  return {k:"libre",label:"présent et libre",cls:"ok"};}
+/* élèves guides présents et libres, du plus disponible au moins disponible */
+function freeGuides(excludeFid){const c=C(),now=nowMin(),iv=inVisitMap(),fams=famList();
+  return Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence==="present"&&!iv[e.id]).map(e=>{
+    const nx=fams.filter(f=>f.id!==excludeFid&&!f.eleve&&f.elevePrevu===e.id&&famActive(f)&&tmin(f.slot)!=null).map(f=>({t:tmin(f.slot),f})).filter(x=>x.t>=now-20&&x.t<now+c.dureeVisite+c.battement).sort((a,b)=>a.t-b.t)[0]||null;
+    return {e,nx,done:fams.filter(f=>f.eleve===e.id).length};})
+    .sort((a,b)=>((a.nx?1:0)-(b.nx?1:0))||(a.done-b.done)||niveau(a.e.classe)-niveau(b.e.classe)||norm(a.e.nom).localeCompare(norm(b.e.nom)));}
+const waitingFams=()=>famList().filter(f=>f.statut==="arrive"&&!f.eleve).sort((a,b)=>(tmin(a.hArrivee)??9999)-(tmin(b.hArrivee)??9999));
+/* tableau des prochains départs : ce qui doit partir maintenant, et ce qui pose problème */
+function departRows(){const now=nowMin(),iv=inVisitMap(),d=delaiRetard();
+  return famList().filter(f=>famActive(f)&&tmin(f.slot)!=null&&tmin(f.slot)>=now-60&&tmin(f.slot)<=now+20).sort((a,b)=>tmin(a.slot)-tmin(b.slot)||norm(a.nom).localeCompare(norm(b.nom))).map(f=>{
+    const t=tmin(f.slot),arr=f.statut==="arrive",lateF=!arr&&now>t+d;const sid=f.attend||f.elevePrevu;const s=sid?stuState(sid,iv):stuState(null,iv);
+    let famLab=arr?`arrivée ${f.hArrivee||""}`:lateF?`pas arrivée (+${now-t} min)`:now>=t?"attendue":`attendue à ${f.slot}`;const famCls=arr?"ok":lateF?"bad":"";
+    let actions=[],level=0;
+    if(arr){if(s.k==="libre"){actions.push(`<button class="btn sm ok" data-go2="${f.id}|${sid}">Partir avec ${esc(prenomOf(sid))}</button>`);}
+      else{level=2;const best=freeGuides(f.id)[0];if(best)actions.push(`<button class="btn sm pri" data-go2="${f.id}|${best.e.id}">Partir avec ${esc(titleCase(best.e.prenom))}</button>`);
+        if(s.k==="visite"&&!f.attend)actions.push(`<button class="btn sm" data-wait="${f.id}|${sid}">Attendre ${esc(prenomOf(sid))}</button>`);
+        if(!best&&s.k!=="visite")actions.push(`<button class="btn sm" data-arr="${f.id}">Voir les solutions</button>`);}}
+    else{if(lateF){level=1;actions.push(`<button class="btn sm" data-fabs="${f.id}">Famille absente</button>`);}
+      const pb=s.k==="absent"||s.k==="none"||(s.k==="attendu"&&s.cls==="bad")||(s.k==="visite"&&Math.max(s.back,now)>t+3);
+      if(pb){level=Math.max(level,s.k==="visite"?1:2);if(freeGuides(f.id).length)actions.push(`<button class="btn sm" data-repl="${f.id}">Remplacer l'élève</button>`);}
+      actions.push(`<button class="btn sm pri" data-arr="${f.id}">Arrivée</button>`);}
+    return {f,t,famLab,famCls,sid,s,actions,level};});}
+
 function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   if(!UI.liveSlot){const cand=slots.filter(s=>tmin(s)<=now+10);UI.liveSlot=cand.length?cand[cand.length-1]:slots[0]||"";}
-  const fams=famList();const el=Object.values(S.eleves);const guides=el.filter(isGuide);
-  const inVisit=new Set(fams.filter(f=>f.statut==="visite"&&f.eleve).map(f=>f.eleve));
-  const freeNow=guides.filter(e=>e.presence==="present"&&!inVisit.has(e.id));
-  const waiting=fams.filter(f=>f.statut==="arrive");
+  const fams=famList();const el=Object.values(S.eleves);const guides=el.filter(isGuide);const iv=inVisitMap();
+  const freeNow=guides.filter(e=>e.presence==="present"&&!iv[e.id]);const waiting=waitingFams();
   const expected=el.filter(e=>!e.presence).map(e=>({e,h:convoc(e).h})).sort((a,b)=>(a.h??9999)-(b.h??9999));
   const q=norm(UI.liveQ);let shown=q?fams.filter(f=>norm(`${f.nom} ${f.prenom} ${f.email}`).includes(q)):famBySlot(UI.liveSlot);
   shown=shown.slice().sort((a,b)=>(tmin(a.slot)-tmin(b.slot))||norm(a.nom).localeCompare(norm(b.nom)));
-  const arrived=fams.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;
-  v.innerHTML=`<div class="row" style="margin-bottom:12px;align-items:flex-end"><div style="flex:1;min-width:220px"><h2>Accueil jour J</h2><p class="lead" style="margin:0">Pointe les élèves à leur arrivée, accueille chaque famille et envoie-la en visite.</p></div><span class="clock" id="clk">${fmt(now)}</span></div>
+  const arrived=fams.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;const rows=departRows();const alerts=rows.filter(r=>r.level>0).length;
+  v.innerHTML=`<div class="row" style="margin-bottom:12px;align-items:flex-end"><div style="flex:1;min-width:220px"><h2>Accueil jour J</h2><p class="lead" style="margin:0">Pointe les élèves à leur arrivée, accueille chaque famille et envoie-la en visite. Les imprévus remontent dans « Prochains départs ».</p></div><span class="clock" id="clk">${fmt(now)}</span></div>
   <div class="grid g4" style="margin-bottom:16px">
-    <div class="card kpi"><div class="n">${arrived}/${fams.filter(f=>f.statut!=="absent").length}</div><div class="l">familles arrivées</div></div>
+    <div class="card kpi"><div class="n">${arrived}/${fams.filter(f=>f.statut!=="absent").length}</div><div class="l">familles arrivées · ${fams.filter(f=>f.statut==="absent").length} absentes</div></div>
     <div class="card kpi"><div class="n">${fams.filter(f=>f.statut==="visite").length}</div><div class="l">visites en cours</div></div>
-    <div class="card kpi"><div class="n" style="color:${freeNow.length?"var(--ok)":"var(--bad)"}">${freeNow.length}</div><div class="l">élèves guides libres</div></div>
+    <div class="card kpi"><div class="n" style="color:${freeNow.length?"var(--ok)":"var(--bad)"}">${freeNow.length}</div><div class="l">élèves guides libres${waiting.length?` · <b style="color:var(--warn)">${waiting.length} famille(s) attendent</b>`:""}</div></div>
     <div class="card kpi"><div class="n">${el.filter(e=>e.presence==="present").length}/${el.length}</div><div class="l">élèves présents · ${el.filter(e=>e.presence==="absent").length} absents</div></div>
+  </div>
+  <div class="card dep" style="margin-bottom:16px"><div class="card-h"><h3>Prochains départs</h3><span class="small muted">${rows.length?`${rows.length} famille(s) entre ${fmt(now-60)} et ${fmt(now+20)}${alerts?` · <b style="color:var(--bad)">${alerts} à régler</b>`:" · tout est en ordre"}`:"aucun départ prévu dans les 20 prochaines minutes"}</span></div>
+    ${rows.length?`<div class="deprows">${rows.map(r=>`<div class="deprow lv${r.level}"><span class="t">${esc(r.f.slot)}</span>
+      <div class="dep-f"><b>${esc(r.f.nom)}</b> <span class="pill ${r.famCls}">${esc(r.famLab)}</span></div>
+      <div class="dep-s">${r.sid?`<span class="nm">${esc(fullName(S.eleves[r.sid]||{}))}</span>`:'<span class="muted">aucun élève</span>'} <span class="pill ${r.s.cls}">${esc(r.f.attend?"attendu : "+r.s.label:r.s.label)}</span></div>
+      <div class="row dep-a">${r.actions.join("")}</div></div>`).join("")}</div>`:""}
   </div>
   <div class="live"><section>
     <input type="search" class="big" id="qLive" placeholder="Nom de la famille…" value="${esc(UI.liveQ)}" autocomplete="off">
     <div class="chips" style="margin:10px 0">${slots.map(s=>{const fs=famBySlot(s);const ok=fs.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;const nowS=tmin(s)<=now&&now<tmin(s)+15;return `<button class="chip ${nowS?"now":""}" aria-pressed="${!q&&UI.liveSlot===s}" data-ls="${s}">${s} <span class="c">${ok}/${fs.length}</span></button>`;}).join("")}<button class="chip" id="walkIn">+ Sans inscription</button></div>
     ${waiting.length?`<div class="sec-t" style="color:var(--warn)">En attente d'un élève (${waiting.length})</div>${waiting.map(famCard).join("")}`:""}
     <div class="sec-t">${q?`Résultats pour « ${esc(UI.liveQ)} »`:`Créneau ${esc(UI.liveSlot)}`} · ${shown.length} famille(s)</div>
-    ${shown.filter(f=>!(f.statut==="arrive"&&!q)).map(famCard).join("")||`<div class="empty"><b>${q?"Aucune famille trouvée":"Aucune famille sur ce créneau"}</b>${q?"Vérifie l'orthographe ou ajoute-la avec « + Sans inscription ».":""}</div>`}
+    ${shown.filter(f=>!(f.statut==="arrive"&&!f.eleve&&!q)).map(famCard).join("")||`<div class="empty"><b>${q?"Aucune famille trouvée":"Aucune famille sur ce créneau"}</b>${q?"Vérifie l'orthographe ou ajoute-la avec « + Sans inscription ».":""}</div>`}
   </section>
   <aside class="card">
     <div class="sec-t" style="margin-top:0">Libres maintenant (${freeNow.length})</div>
-    <div class="freebox">${freeNow.map(e=>{const nx=visitsOf(e.id).find(x=>x.t>=now-5);return `<div class="free"><b>${esc(fullName(e))}</b><span class="muted">${esc(e.classe)}${nx?` · prévu ${fmt(nx.t)}`:" · réserve"}</span></div>`;}).join("")||'<span class="muted small">Aucun élève libre pour le moment.</span>'}</div>
-    <div class="sec-t">En visite (${inVisit.size})</div>
-    ${fams.filter(f=>f.statut==="visite"&&f.eleve).sort((a,b)=>tmin(a.hDepart)-tmin(b.hDepart)).reduce((acc,f)=>{if(!acc.some(x=>x.eleve===f.eleve))acc.push(f);return acc;},[]).map(f=>{const e=S.eleves[f.eleve];const fs=fams.filter(x=>x.statut==="visite"&&x.eleve===f.eleve);const late=now-tmin(f.hDepart)>c.dureeVisite+10;return `<div class="stu"><span><span class="nm">${esc(fullName(e||{}))}</span> <span class="muted small">avec ${esc(fs.map(x=>x.nom).join(" + "))} · parti à ${esc(f.hDepart)}</span>${late?' <span class="pill warn">en retard</span>':""}</span><button class="btn sm ok" data-back="${f.eleve}">De retour</button></div>`;}).join("")||'<span class="muted small">Aucune visite en cours.</span>'}
+    <div class="freebox">${freeGuides().map(({e,nx})=>`<div class="free"><b>${esc(fullName(e))}</b><span class="muted">${esc(e.classe)}${nx?` · prévu ${fmt(nx.t)} (${esc(nx.f.nom)})`:" · disponible"}</span></div>`).join("")||'<span class="muted small">Aucun élève libre pour le moment.</span>'}</div>
+    <div class="sec-t">En visite (${Object.keys(iv).length})</div>
+    ${Object.entries(iv).sort((a,b)=>tmin(a[1][0].hDepart)-tmin(b[1][0].hDepart)).map(([sid,fs])=>{const st=stuState(sid,iv);const next=famList().filter(f=>famActive(f)&&!f.eleve&&(f.attend===sid||f.elevePrevu===sid)).sort((a,b)=>tmin(a.slot)-tmin(b.slot))[0];
+      return `<div class="stu"><span><span class="nm">${esc(fullName(S.eleves[sid]||{}))}</span> <span class="muted small">avec ${esc(fs.map(x=>x.nom).join(" + "))} · parti à ${esc(fs[0].hDepart)}</span>${st.late>0?` <span class="pill bad">+${st.late} min</span>`:""}${next?`<br><span class="small" style="color:var(--warn)">${next.statut==="arrive"?"attendu par":"ensuite :"} ${esc(next.nom)} (${esc(next.slot)})</span>`:""}</span><button class="btn sm ok" data-back="${sid}">De retour</button></div>`;}).join("")||'<span class="muted small">Aucune visite en cours.</span>'}
     <div class="sec-t">Élèves attendus (${expected.length})</div>
     ${expected.map(({e,h})=>`<div class="stu"><span><span class="t">${fmt(h)}</span> <span class="nm">${esc(fullName(e))}</span> <span class="muted small">${esc(e.classe)}${e.role==="atelier"?" · "+esc(e.atelier):""}</span>${isJ()&&h!=null&&now>h+5?' <span class="pill warn">pas arrivé</span>':""}</span><span class="row" style="gap:4px"><button class="btn sm ok" data-pres="${e.id}">Présent</button><button class="btn sm" data-abs="${e.id}">Absent</button></span></div>`).join("")||'<span class="muted small">Tous les élèves sont pointés.</span>'}
     ${el.filter(e=>e.presence).length?`<details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Élèves déjà pointés (${el.filter(e=>e.presence).length})</summary>${el.filter(e=>e.presence).sort((a,b)=>norm(a.nom).localeCompare(norm(b.nom))).map(e=>`<div class="stu"><span><span class="nm">${esc(fullName(e))}</span> <span class="pill ${e.presence==="present"?"ok":"bad"}">${e.presence==="present"?"présent "+esc(e.arrivee||""):"absent"}</span></span><button class="btn sm ghost" data-unp="${e.id}">Annuler</button></div>`).join("")}</details>`:""}
+    <p class="small muted" style="margin-top:14px">Famille considérée en retard après <input type="number" id="dRet" min="5" max="60" step="5" value="${delaiRetard()}" style="width:58px;padding:3px 6px"> min.</p>
   </aside></div>`;
   const qi=$("#qLive");qi.oninput=()=>{UI.liveQ=qi.value;render();};
   v.querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{UI.liveSlot=b.dataset.ls;UI.liveQ="";render();});
   $("#walkIn").onclick=()=>editFam(null,UI.liveSlot);
+  $("#dRet").onchange=e=>putConfig({delaiRetard:Math.max(5,+e.target.value||10)});
   v.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>arrivalDlg(b.dataset.arr));
-  v.querySelectorAll("[data-famabs]").forEach(b=>b.onclick=()=>{const f=S.familles[b.dataset.famabs];patch("familles",f.id,{statut:f.statut==="absent"?"inscrit":"absent"});});
+  v.querySelectorAll("[data-famabs]").forEach(b=>b.onclick=()=>{const f=S.familles[b.dataset.famabs];if(f.statut==="absent")patch("familles",f.id,{statut:"inscrit"});else famAbsent(f.id);});
+  v.querySelectorAll("[data-fabs]").forEach(b=>b.onclick=()=>famAbsent(b.dataset.fabs));
+  v.querySelectorAll("[data-go2]").forEach(b=>b.onclick=()=>{const [fid,sid]=b.dataset.go2.split("|");goVisit(fid,sid);});
+  v.querySelectorAll("[data-wait]").forEach(b=>b.onclick=()=>{const [fid,sid]=b.dataset.wait.split("|");waitFor(fid,sid);});
+  v.querySelectorAll("[data-repl]").forEach(b=>b.onclick=()=>replacePlan(b.dataset.repl));
   v.querySelectorAll("[data-famback]").forEach(b=>b.onclick=()=>backStudent(S.familles[b.dataset.famback].eleve));
   v.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>backStudent(b.dataset.back));
   v.querySelectorAll("[data-pres]").forEach(b=>b.onclick=()=>patch("eleves",b.dataset.pres,{presence:"present",arrivee:fmt(nowMin())}));
   v.querySelectorAll("[data-abs]").forEach(b=>b.onclick=async()=>{await patch("eleves",b.dataset.abs,{presence:"absent"});await repairFor(b.dataset.abs,"absent");});
   v.querySelectorAll("[data-unp]").forEach(b=>b.onclick=()=>patch("eleves",b.dataset.unp,{presence:"",arrivee:""}));
-  clearInterval(liveTimer);liveTimer=setInterval(()=>{if(UI.tab!=="accueil"){clearInterval(liveTimer);return;}const k=$("#clk");if(k&&k.textContent!==fmt(nowMin()))render();},20000);
+  clearInterval(liveTimer);liveTimer=setInterval(()=>{if(UI.tab!=="accueil"){clearInterval(liveTimer);return;}const k=$("#clk");if(k&&k.textContent!==fmt(nowMin())&&!dlg.open)render();},20000);
 }
-function famCard(f){const st=f.statut||"inscrit";const plan=f.elevePrevu&&S.eleves[f.elevePrevu];let right="",meta=[`<span class="t">${esc(f.slot||"—")}</span>`,`${esc(f.nb||1)} pers.`];
-  if(st==="inscrit"){if(plan)meta.push(`élève prévu : <b>${esc(fullName(plan))}</b> ${plan.presence==="present"?'<span class="pill ok">présent</span>':plan.presence==="absent"?'<span class="pill bad">absent</span>':'<span class="pill">pas encore pointé</span>'}`);right=`<button class="btn pri" data-arr="${f.id}">Arrivée</button><button class="btn sm ghost" data-famabs="${f.id}" title="Marquer absente">Absente</button>`;}
-  else if(st==="arrive"){meta.push(`arrivée à ${esc(f.hArrivee||"")}`);right=`<button class="btn pri" data-arr="${f.id}">Attribuer un élève</button>`;}
+function famCard(f){const st=f.statut||"inscrit";const now=nowMin();const plan=f.elevePrevu&&S.eleves[f.elevePrevu];let right="",meta=[`<span class="t">${esc(f.slot||"—")}</span>`,`${esc(f.nb||1)} pers.`];
+  if(st==="inscrit"){if(plan){const s=stuState(plan.id);meta.push(`élève prévu : <b>${esc(fullName(plan))}</b> <span class="pill ${s.cls}">${esc(s.k==="visite"?"en visite":s.k==="libre"?"présent":s.label)}</span>`);}
+    if(tmin(f.slot)!=null&&now>tmin(f.slot)+delaiRetard())meta.push(`<span class="pill bad">en retard (+${now-tmin(f.slot)} min)</span>`);
+    right=`<button class="btn pri" data-arr="${f.id}">Arrivée</button><button class="btn sm ghost" data-famabs="${f.id}" title="Marquer absente">Absente</button>`;}
+  else if(st==="arrive"){meta.push(`arrivée à ${esc(f.hArrivee||"")}`);if(f.attend)meta.push(`attend <b>${esc(fullName(S.eleves[f.attend]||{}))}</b> <span class="pill warn">${esc(stuState(f.attend).k==="visite"?"en visite":stuState(f.attend).label)}</span>`);right=`<button class="btn pri" data-arr="${f.id}">Attribuer un élève</button>`;}
   else if(st==="visite"){meta.push(`avec <b>${esc(fullName(S.eleves[f.eleve]||{}))}</b> depuis ${esc(f.hDepart||"")}`);right=`<button class="btn sm ok" data-famback="${f.id}">Visite terminée</button>`;}
   else if(st==="fini"){meta.push(`visite avec ${esc(fullName(S.eleves[f.eleve]||{}))} · ${esc(f.hDepart||"")}–${esc(f.hRetour||"")}`);}
   else if(st==="absent"){right=`<button class="btn sm ghost" data-famabs="${f.id}">Annuler absence</button>`;}
   return `<div class="fam st-${st}"><div style="min-width:0"><div class="who">${esc(f.nom)} ${esc(f.prenom||"")} ${stPill(f)}</div><div class="meta">${meta.join("<span>·</span>")}${f.infos?`<span>·</span><span>${esc(f.infos)}</span>`:""}</div></div><div class="row" style="justify-content:flex-end">${right}</div></div>`;}
-function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const fams=famList();
-  const inVisit=new Set(fams.filter(x=>x.statut==="visite"&&x.eleve).map(x=>x.eleve));
-  const cands=Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence==="present"&&!inVisit.has(e.id)).map(e=>{const nx=visitsOf(e.id).filter(x=>!x.fs.some(y=>y.id===f.id)&&x.fs.some(y=>!y.eleve)).find(x=>x.t>=now-5&&x.t<now+c.dureeVisite+c.battement);const done=fams.filter(x=>x.eleve===e.id).length;return {e,nx,done,planned:f.elevePrevu===e.id};})
-    .sort((a,b)=>(b.planned-a.planned)||((a.nx?1:0)-(b.nx?1:0))||(a.done-b.done)||niveau(a.e.classe)-niveau(b.e.classe));
-  const plan=f.elevePrevu&&S.eleves[f.elevePrevu];
+function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const fams=famList();const iv=inVisitMap();
+  const planId=f.attend||f.elevePrevu;const plan=planId&&S.eleves[planId];const ps=plan?stuState(planId,iv):null;
+  const alts=freeGuides(f.id).filter(x=>x.e.id!==planId);
   const late=tmin(f.slot)!=null?now-tmin(f.slot):0;
-  const busyGuides=fams.filter(x=>x.statut==="visite"&&x.eleve&&tmin(x.hDepart)>=now-10).reduce((a,x)=>{if(!a.some(y=>y.eleve===x.eleve))a.push(x);return a;},[]);
-  openDlg(`Accueil : ${esc(f.nom)} ${esc(f.prenom||"")}`,`<div class="row"><span class="pill">${esc(f.slot)}</span><span class="pill">${esc(f.nb||1)} pers.</span>${late>10?`<span class="pill warn">${late} min de retard</span>`:late<-10?`<span class="pill info">${-late} min d'avance</span>`:""}</div>
+  const recent=Object.entries(iv).filter(([sid,fs])=>now-tmin(fs[0].hDepart)<=10&&fs.length<c.maxFamilles).map(([sid,fs])=>({sid,fs}));
+  const altBtn=(x,i)=>`<button class="btn" style="justify-content:space-between;text-align:left" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span>${i===0&&!x.nx?' <span class="pill ok">conseillé</span>':""}</span><span class="small">${x.nx?`<span class="pill warn">prévu à ${fmt(x.nx.t)} avec ${esc(x.nx.f.nom)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`;
+  let planBlock="";
+  if(plan){if(ps.k==="libre")planBlock=`<div class="alert ok">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)}), présent et libre.<div style="margin-top:8px"><button class="btn ok lg" data-go="${plan.id}">Partir avec ${esc(prenomOf(plan.id))}</button></div></div>`;
+    else if(ps.k==="visite")planBlock=`<div class="alert">Élève prévu : <b>${esc(fullName(plan))}</b> est encore en visite (${esc(ps.label)}).<div class="row" style="margin-top:8px"><button class="btn" data-waitd="${plan.id}">Attendre ${esc(prenomOf(plan.id))}</button><span class="small">ou choisis un autre élève ci-dessous.</span></div></div>`;
+    else planBlock=`<div class="alert bad">Élève prévu : <b>${esc(fullName(plan))}</b> ${esc(ps.label)}. Choisis un autre élève ci-dessous.${ps.k==="attendu"?` <button class="btn sm" data-markabs="${plan.id}">Le marquer absent</button>`:""}</div>`;}
+  openDlg(`Accueil : ${esc(f.nom)} ${esc(f.prenom||"")}`,`<div class="row"><span class="pill">${esc(f.slot||"sans créneau")}</span><span class="pill">${esc(f.nb||1)} pers.</span>${late>10?`<span class="pill warn">${late} min de retard</span>`:late<-10?`<span class="pill info">${-late} min d'avance</span>`:""}</div>
   <p class="small muted" style="margin:0">Donne le feuillet d'accueil à la famille, puis choisis l'élève qui l'accompagne.</p>
-  ${plan?`<div class="alert ${plan.presence==="present"&&!inVisit.has(plan.id)?"ok":"bad"}">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)}) — ${plan.presence==="absent"?"absent":plan.presence!=="present"?"pas encore pointé présent":inVisit.has(plan.id)?"encore en visite":"disponible"}</div>`:""}
-  <div class="sec-t" style="margin:0">Élèves libres (${cands.length})</div>
-  <div style="display:grid;gap:6px;max-height:300px;overflow:auto">${cands.map(x=>`<button class="btn" style="justify-content:space-between;text-align:left" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span></span><span class="small">${x.planned?'<span class="pill ok">prévu</span>':x.nx?`<span class="pill warn">prévu à ${fmt(x.nx.t)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`).join("")||'<div class="alert bad">Aucun élève libre. Mets la famille en attente, ou ajoute-la à une visite qui vient de partir.</div>'}</div>
-  ${busyGuides.length&&!cands.length?`<div class="sec-t" style="margin:0">Joindre une visite qui vient de partir</div><div style="display:grid;gap:6px">${busyGuides.map(x=>`<button class="btn" data-join="${x.eleve}">${esc(fullName(S.eleves[x.eleve]||{}))} · parti à ${esc(x.hDepart)} avec ${esc(x.nom)}</button>`).join("")}</div>`:""}`,
+  ${planBlock}
+  <div class="sec-t" style="margin:0">${plan&&ps.k==="libre"?"Ou un autre élève libre":"Élèves libres"} (${alts.length})</div>
+  <div style="display:grid;gap:6px;max-height:280px;overflow:auto">${alts.map(altBtn).join("")||`<div class="alert bad">Aucun élève libre pour le moment. Mets la famille en attente : le premier élève qui revient de visite lui sera proposé${recent.length?", ou ajoute-la à une visite qui vient de partir":""}.</div>`}</div>
+  ${recent.length&&!alts.length?`<div class="sec-t" style="margin:0">Rejoindre une visite qui vient de partir</div><div style="display:grid;gap:6px">${recent.map(x=>`<button class="btn" data-join="${x.sid}">${esc(fullName(S.eleves[x.sid]||{}))} · partie à ${esc(x.fs[0].hDepart)} avec ${esc(x.fs.map(y=>y.nom).join(" + "))}</button>`).join("")}</div>`:""}`,
   `<button class="btn" data-close>Fermer</button>${f.statut!=="arrive"?'<button class="btn" id="waitB">Arrivée, en attente d\'un élève</button>':""}`,d=>{
     d.querySelectorAll("[data-go]").forEach(b=>b.onclick=async()=>{d.close();await goVisit(f.id,b.dataset.go);});
-    d.querySelectorAll("[data-join]").forEach(b=>b.onclick=async()=>{d.close();const ref=fams.find(x=>x.statut==="visite"&&x.eleve===b.dataset.join);await patch("familles",f.id,{statut:"visite",eleve:b.dataset.join,hArrivee:f.hArrivee||fmt(nowMin()),hDepart:ref.hDepart});toast(`${f.nom} rejoint la visite de ${fullName(S.eleves[b.dataset.join])}.`);});
+    d.querySelectorAll("[data-waitd]").forEach(b=>b.onclick=async()=>{d.close();await waitFor(f.id,b.dataset.waitd);});
+    d.querySelectorAll("[data-markabs]").forEach(b=>b.onclick=async()=>{d.close();await patch("eleves",b.dataset.markabs,{presence:"absent"});await repairFor(b.dataset.markabs,"absent");arrivalDlg(f.id);});
+    d.querySelectorAll("[data-join]").forEach(b=>b.onclick=async()=>{d.close();const ref=fams.find(x=>x.statut==="visite"&&x.eleve===b.dataset.join);await patch("familles",f.id,{statut:"visite",eleve:b.dataset.join,attend:null,hArrivee:f.hArrivee||fmt(nowMin()),hDepart:ref.hDepart});toast(`${f.nom} rejoint la visite de ${fullName(S.eleves[b.dataset.join])}.`);});
     const w=d.querySelector("#waitB");if(w)w.onclick=()=>{d.close();patch("familles",f.id,{statut:"arrive",hArrivee:fmt(nowMin())});};});}
-async function goVisit(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());await patch("familles",fid,{statut:"visite",eleve:sid,hArrivee:f.hArrivee||t,hDepart:t});
-  if(f.elevePrevu&&f.elevePrevu!==sid){/* l'élève initialement prévu redevient libre */}
+async function goVisit(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());await patch("familles",fid,{statut:"visite",eleve:sid,attend:null,hArrivee:f.hArrivee||t,hDepart:t});
   toast(`${f.nom} part en visite avec ${fullName(S.eleves[sid])}.`);await repairFor(sid,"busy");}
-async function backStudent(sid){const t=fmt(nowMin());const fs=famList().filter(f=>f.statut==="visite"&&f.eleve===sid);await putMany("familles",fs.map(f=>[f.id,{...f,statut:"fini",hRetour:t}]));toast(`${fullName(S.eleves[sid]||{})} est de retour et disponible.`);}
+/* cas 3 : la famille attend son élève, encore en visite ; il lui sera proposé dès son retour */
+async function waitFor(fid,sid){const f=S.familles[fid];await patch("familles",fid,{statut:"arrive",attend:sid,hArrivee:f.hArrivee||fmt(nowMin())});toast(`${f.nom} attend ${prenomOf(sid)} : la famille lui sera proposée dès son retour.`);}
+/* cas 2 (anticipé) : l'élève prévu est absent, pas arrivé ou en retard de visite → un élève libre prend la famille */
+async function replacePlan(fid){const f=S.familles[fid];const L=freeGuides(fid).filter(x=>x.e.id!==f.elevePrevu);const best=L.find(x=>!x.nx)||L[0];
+  if(!best)return toast("Aucun élève libre pour l'instant. La famille sera accueillie à son arrivée par le premier élève disponible.");
+  const old=f.elevePrevu;await patch("familles",fid,{elevePrevu:best.e.id,attend:null});toast(`${titleCase(best.e.prenom)} accompagnera ${f.nom} (${f.slot})${old?` à la place de ${prenomOf(old)}`:""}.`,6000);}
+/* cas 1 : la famille ne vient pas → l'élève prévu est libéré, et on lui propose une famille qui attend */
+async function famAbsent(fid){const f=S.familles[fid];await patch("familles",fid,{statut:"absent",attend:null});const sid=f.elevePrevu;
+  if(!sid||!S.eleves[sid])return toast(`${f.nom} marquée absente.`);const s=stuState(sid);
+  if(s.k==="libre"&&waitingFams().length)return proposeFamily(sid,`${f.nom} ne vient pas : ${prenomOf(sid)} est libre.`);
+  toast(`${f.nom} marquée absente. ${prenomOf(sid)} ${s.k==="libre"?"est libre pour une autre famille (en attente ou sans inscription).":"n'aura pas cette visite."}`,6000);}
+async function backStudent(sid){const t=fmt(nowMin());const fs=famList().filter(f=>f.statut==="visite"&&f.eleve===sid);await putMany("familles",fs.map(f=>[f.id,{...f,statut:"fini",hRetour:t}]));
+  if(waitingFams().length)return proposeFamily(sid,`${fullName(S.eleves[sid]||{})} est de retour.`);
+  const next=famList().filter(f=>famActive(f)&&!f.eleve&&f.elevePrevu===sid&&tmin(f.slot)!=null).sort((a,b)=>tmin(a.slot)-tmin(b.slot))[0];
+  toast(`${fullName(S.eleves[sid]||{})} est de retour${next?` : prochaine visite à ${next.slot} avec ${next.nom}`:" et disponible"}.`,6000);}
+/* propose à un élève qui se libère les familles qui attendent, la sienne en premier */
+function proposeFamily(sid,msg){const L=waitingFams().sort((a,b)=>((b.attend===sid)-(a.attend===sid))||((b.elevePrevu===sid)-(a.elevePrevu===sid))||((tmin(a.hArrivee)??0)-(tmin(b.hArrivee)??0)));
+  openDlg(esc(msg),`<p style="margin:0">${L.length===1?"Une famille attend un élève :":`${L.length} familles attendent un élève :`}</p>
+    <div style="display:grid;gap:6px">${L.map((f,i)=>`<button class="btn ${i===0?"pri":""}" style="justify-content:space-between;text-align:left" data-pg="${f.id}"><span><b>Partir avec ${esc(f.nom)}</b> <span class="small">${esc(f.slot||"")}</span></span><span class="small">${f.attend===sid?"l'attend":f.elevePrevu===sid?"prévue avec lui/elle":`attend depuis ${esc(f.hArrivee||"")}`}</span></button>`).join("")}</div>`,
+    `<button class="btn" data-close>Plus tard</button>`,d=>{d.querySelectorAll("[data-pg]").forEach(b=>b.onclick=async()=>{d.close();await goVisit(b.dataset.pg,sid);});});}
 
 /* ---------- Documents ---------- */
 function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").length;
