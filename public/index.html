@@ -623,7 +623,7 @@ function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
   <input type="search" class="big" id="qFam" placeholder="Rechercher une famille par nom, prénom, e-mail… (tous créneaux)" value="${esc(UI.q)}" autocomplete="off">
   <div class="chips" style="margin:12px 0 14px"><button class="chip" aria-pressed="${UI.slot==="all"}" data-slot="all">Tous <span class="c">${all.length}</span></button>${slots.map(s=>`<button class="chip" aria-pressed="${UI.slot===s}" data-slot="${s}">${s} <span class="c">${famBySlot(s).length}</span></button>`).join("")}</div>
   ${all.length?`<div class="tbl-wrap"><table><thead><tr><th>Famille</th><th>Pers.</th><th>Contact</th><th>Informations</th><th>Élève</th><th>Statut</th><th></th></tr></thead><tbody>
-  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
+  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':f.source==="sur place"?' <span class="pill acc">sur place</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
   </tbody></table></div>`:`<div class="empty"><b>Pas encore d'inscriptions ici</b>Dans Evento, ouvre les résultats du sondage, puis <em>Exporter</em> (Excel ou CSV) et importe le fichier avec le bouton ci-dessus.<br>Tu peux aussi sélectionner le tableau des réponses, le copier et utiliser « Coller depuis Evento ».</div>`}`;
   const qi=$("#qFam");qi.oninput=()=>{UI.q=qi.value;render();};
   v.querySelectorAll("[data-slot]").forEach(b=>b.onclick=()=>{UI.slot=b.dataset.slot;UI.q="";render();});
@@ -826,7 +826,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   const arrived=fams.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;const rows=departRows();const alerts=rows.filter(r=>r.level>0).length;
   v.innerHTML=`<div class="row" style="margin-bottom:12px;align-items:flex-end"><div style="flex:1;min-width:220px"><h2>Accueil jour J</h2><p class="lead" style="margin:0">Pointe les élèves à leur arrivée, accueille chaque famille et envoie-la en visite. Les imprévus remontent dans « Prochains départs ».</p></div><span class="clock" id="clk">${fmt(now)}</span></div>
   <div class="grid g4" style="margin-bottom:16px">
-    <div class="card kpi"><div class="n">${arrived}/${fams.filter(f=>f.statut!=="absent").length}</div><div class="l">familles arrivées · ${fams.filter(f=>f.statut==="absent").length} absentes</div></div>
+    <div class="card kpi"><div class="n">${arrived}/${fams.filter(f=>f.statut!=="absent").length}</div><div class="l">familles arrivées · ${fams.filter(f=>f.statut==="absent").length} absentes${fams.filter(f=>f.source==="sur place").length?` · ${fams.filter(f=>f.source==="sur place").length} sans inscription`:""}</div></div>
     <div class="card kpi"><div class="n">${fams.filter(f=>f.statut==="visite").length}</div><div class="l">visites en cours</div></div>
     <div class="card kpi"><div class="n" style="color:${freeNow.length?"var(--ok)":"var(--bad)"}">${freeNow.length}</div><div class="l">élèves guides libres${waiting.length?` · <b style="color:var(--warn)">${waiting.length} famille(s) attendent</b>`:""}</div></div>
     <div class="card kpi"><div class="n">${el.filter(e=>e.presence==="present").length}/${el.length}</div><div class="l">élèves présents · ${el.filter(e=>e.presence==="absent").length} absents</div></div>
@@ -839,10 +839,10 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   </div>
   <div class="live"><section>
     <input type="search" class="big" id="qLive" placeholder="Nom de la famille…" value="${esc(UI.liveQ)}" autocomplete="off">
-    <div class="chips" style="margin:10px 0">${slots.map(s=>{const fs=famBySlot(s);const ok=fs.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;const nowS=tmin(s)<=now&&now<tmin(s)+15;return `<button class="chip ${nowS?"now":""}" aria-pressed="${!q&&UI.liveSlot===s}" data-ls="${s}">${s} <span class="c">${ok}/${fs.length}</span></button>`;}).join("")}<button class="chip" id="walkIn">+ Sans inscription</button></div>
+    <div class="chips" style="margin:10px 0">${slots.map(s=>{const fs=famBySlot(s);const ok=fs.filter(f=>["arrive","visite","fini"].includes(f.statut)).length;const nowS=tmin(s)<=now&&now<tmin(s)+15;return `<button class="chip ${nowS?"now":""}" aria-pressed="${!q&&UI.liveSlot===s}" data-ls="${s}">${s} <span class="c">${ok}/${fs.length}</span></button>`;}).join("")}<button class="chip" id="walkIn" style="border-color:var(--accent);color:var(--accent)">+ Famille sans inscription</button></div>
     ${waiting.length?`<div class="sec-t" style="color:var(--warn)">En attente d'un élève (${waiting.length})</div>${waiting.map(famCard).join("")}`:""}
     <div class="sec-t">${q?`Résultats pour « ${esc(UI.liveQ)} »`:`Créneau ${esc(UI.liveSlot)}`} · ${shown.length} famille(s)</div>
-    ${shown.filter(f=>!(f.statut==="arrive"&&!f.eleve&&!q)).map(famCard).join("")||`<div class="empty"><b>${q?"Aucune famille trouvée":"Aucune famille sur ce créneau"}</b>${q?"Vérifie l'orthographe ou ajoute-la avec « + Sans inscription ».":""}</div>`}
+    ${shown.filter(f=>!(f.statut==="arrive"&&!f.eleve&&!q)).map(famCard).join("")||`<div class="empty"><b>${q?"Aucune famille trouvée":"Aucune famille sur ce créneau"}</b>${q?`Vérifie l'orthographe, ou c'est une famille non inscrite :<div style="margin-top:10px"><button class="btn pri" id="walkQ">Ajouter « ${esc(UI.liveQ.trim().toUpperCase())} » sans inscription</button></div>`:""}</div>`}
   </section>
   <aside class="card">
     <div class="sec-t" style="margin-top:0">Libres maintenant (${freeNow.length})</div>
@@ -857,7 +857,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   </aside></div>`;
   const qi=$("#qLive");qi.oninput=()=>{UI.liveQ=qi.value;render();};
   v.querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{UI.liveSlot=b.dataset.ls;UI.liveQ="";render();});
-  $("#walkIn").onclick=()=>editFam(null,UI.liveSlot);
+  $("#walkIn").onclick=()=>walkInDlg();const wq=$("#walkQ");if(wq)wq.onclick=()=>walkInDlg(UI.liveQ.trim());
   $("#dRet").onchange=e=>putConfig({delaiRetard:Math.max(5,+e.target.value||10)});
   v.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>arrivalDlg(b.dataset.arr));
   v.querySelectorAll("[data-famabs]").forEach(b=>b.onclick=()=>{const f=S.familles[b.dataset.famabs];if(f.statut==="absent")patch("familles",f.id,{statut:"inscrit"});else famAbsent(f.id);});
@@ -880,7 +880,7 @@ function famCard(f){const st=f.statut||"inscrit";const now=nowMin();const plan=f
   else if(st==="visite"){meta.push(`avec <b>${esc(fullName(S.eleves[f.eleve]||{}))}</b> depuis ${esc(f.hDepart||"")}`);right=`<button class="btn sm ok" data-famback="${f.id}">Visite terminée</button>`;}
   else if(st==="fini"){meta.push(`visite avec ${esc(fullName(S.eleves[f.eleve]||{}))} · ${esc(f.hDepart||"")}–${esc(f.hRetour||"")}`);}
   else if(st==="absent"){right=`<button class="btn sm ghost" data-famabs="${f.id}">Annuler absence</button>`;}
-  return `<div class="fam st-${st}"><div style="min-width:0"><div class="who">${esc(f.nom)} ${esc(f.prenom||"")} ${stPill(f)}</div><div class="meta">${meta.join("<span>·</span>")}${f.infos?`<span>·</span><span>${esc(f.infos)}</span>`:""}</div></div><div class="row" style="justify-content:flex-end">${right}</div></div>`;}
+  return `<div class="fam st-${st}"><div style="min-width:0"><div class="who">${esc(f.nom)} ${esc(f.prenom||"")} ${stPill(f)}${f.source==="sur place"?' <span class="pill acc">sans inscription</span>':""}</div><div class="meta">${meta.join("<span>·</span>")}${f.infos?`<span>·</span><span>${esc(f.infos)}</span>`:""}</div></div><div class="row" style="justify-content:flex-end">${right}</div></div>`;}
 function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const fams=famList();const iv=inVisitMap();
   const planId=f.attend||f.elevePrevu;const plan=planId&&S.eleves[planId];const ps=plan?stuState(planId,iv):null;
   const alts=freeGuides(f.id).filter(x=>x.e.id!==planId);
@@ -920,6 +920,23 @@ async function backStudent(sid){const t=fmt(nowMin());const fs=famList().filter(
   if(waitingFams().length)return proposeFamily(sid,`${fullName(S.eleves[sid]||{})} est de retour.`);
   const next=famList().filter(f=>famActive(f)&&!f.eleve&&f.elevePrevu===sid&&tmin(f.slot)!=null).sort((a,b)=>tmin(a.slot)-tmin(b.slot))[0];
   toast(`${fullName(S.eleves[sid]||{})} est de retour${next?` : prochaine visite à ${next.slot} avec ${next.nom}`:" et disponible"}.`,6000);}
+/* cas 4 : famille non inscrite qui se présente le jour même */
+function currentSlot(){const now=nowMin(),sl=slotsAll();const past=sl.filter(x=>tmin(x)<=now);return past.length?past[past.length-1]:sl[0]||fmt(now);}
+function walkInDlg(prefNom){const now=nowMin();const free=freeGuides().filter(x=>!x.nx).length;
+  openDlg("Famille sans inscription",`<p class="small muted" style="margin:0">Seul le nom est obligatoire. La famille est rattachée au créneau ${esc(currentSlot())} et comptée comme arrivée à ${fmt(now)}.</p>
+  <div class="fgrid"><label class="f">Nom *<input type="text" id="wN" value="${esc((prefNom||"").toUpperCase())}" autocomplete="off"></label><label class="f">Prénom<input type="text" id="wP" autocomplete="off"></label></div>
+  <div class="f"><span>Nombre de personnes</span><div class="seg" id="wNb">${[1,2,3,4,5].map(n=>`<button type="button" data-nb="${n}" aria-pressed="${n===2}">${n}${n===5?"+":""}</button>`).join("")}</div></div>
+  <div class="fgrid"><label class="f">Téléphone<input type="text" id="wT" inputmode="tel"></label><label class="f">E-mail (pour garder le contact)<input type="email" id="wE"></label></div>
+  <label class="f">Enfant, école, remarque<input type="text" id="wI" placeholder="ex. CM2 école Jean Macé"></label>
+  <div class="alert ${free?"ok":""}" style="margin:0">${free?`${free} élève(s) libre(s) sans visite imminente pour l'accompagner.`:"Aucun élève totalement libre : la famille pourra attendre le prochain retour de visite ou rejoindre une visite qui part."}</div>`,
+  `<button class="btn" data-close>Annuler</button><button class="btn" id="wSave">Enregistrer (en attente)</button><button class="btn pri" id="wGo">Enregistrer et choisir un élève</button>`,d=>{
+    let nb=2;d.querySelectorAll("[data-nb]").forEach(b=>b.onclick=()=>{nb=+b.dataset.nb;d.querySelectorAll("[data-nb]").forEach(x=>x.setAttribute("aria-pressed",x===b));});
+    setTimeout(()=>{const i=d.querySelector(prefNom?"#wP":"#wN");i&&i.focus();},50);
+    const save=async go=>{const g=k=>d.querySelector(k).value.trim();if(!g("#wN")){toast("Indique au moins le nom de la famille.");d.querySelector("#wN").focus();return;}
+      const id=uid();await put("familles",id,{nom:g("#wN").toUpperCase(),prenom:g("#wP"),nb,tel:g("#wT"),email:g("#wE"),infos:g("#wI"),slot:currentSlot(),source:"sur place",statut:"arrive",hArrivee:fmt(nowMin()),elevePrevu:null});
+      d.close();UI.liveQ="";toast(`${g("#wN").toUpperCase()} ajoutée (sans inscription).`);if(go)arrivalDlg(id);};
+    d.querySelector("#wGo").onclick=()=>save(true);d.querySelector("#wSave").onclick=()=>save(false);
+    d.querySelectorAll("input").forEach(i=>i.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();save(true);}});});}
 /* propose à un élève qui se libère les familles qui attendent, la sienne en premier */
 function proposeFamily(sid,msg){const L=waitingFams().sort((a,b)=>((b.attend===sid)-(a.attend===sid))||((b.elevePrevu===sid)-(a.elevePrevu===sid))||((tmin(a.hArrivee)??0)-(tmin(b.hArrivee)??0)));
   openDlg(esc(msg),`<p style="margin:0">${L.length===1?"Une famille attend un élève :":`${L.length} familles attendent un élève :`}</p>
@@ -1012,7 +1029,7 @@ function pdfAffiche(){const c=C();const doc=newPdf();if(!doc)return;const cv=qrC
   doc.setFontSize(8);doc.setTextColor(110);doc.text(doc.splitTextToSize(c.eventoUrl,180),105,245,{align:"center"});doc.setTextColor(0);doc.setFillColor(107,63,209);doc.rect(0,283,210,14,"F");
   savePdf(doc,"affiche_qrcode_inscription.pdf");}
 function xlsExport(){if(!window.XLSX)return toast("Excel indisponible, recharge la page.");const wb=XLSX.utils.book_new();
-  const fams=famList().sort((a,b)=>(tmin(a.slot)??9999)-(tmin(b.slot)??9999)||norm(a.nom).localeCompare(norm(b.nom))).map(f=>{const e=S.eleves[f.eleve||f.elevePrevu];return {Créneau:f.slot,Nom:f.nom,Prénom:f.prenom,Personnes:+f.nb||1,Email:f.email,Téléphone:f.tel,Informations:f.infos,"Élève":e?fullName(e):"",Classe:e?e.classe:"",Statut:ST[f.statut||"inscrit"][0],Arrivée:f.hArrivee||"",Départ:f.hDepart||"",Retour:f.hRetour||""};});
+  const fams=famList().sort((a,b)=>(tmin(a.slot)??9999)-(tmin(b.slot)??9999)||norm(a.nom).localeCompare(norm(b.nom))).map(f=>{const e=S.eleves[f.eleve||f.elevePrevu];return {Créneau:f.slot,Nom:f.nom,Prénom:f.prenom,Personnes:+f.nb||1,Email:f.email,Téléphone:f.tel,Informations:f.infos,Source:f.source==="sur place"?"Sans inscription (sur place)":f.source==="manuel"?"Ajout manuel":"Evento","Élève":e?fullName(e):"",Classe:e?e.classe:"",Statut:ST[f.statut||"inscrit"][0],Arrivée:f.hArrivee||"",Départ:f.hDepart||"",Retour:f.hRetour||""};});
   const el=Object.values(S.eleves).map(e=>({e,cv:convoc(e)})).sort((a,b)=>(a.cv.h??9999)-(b.cv.h??9999)).map(({e,cv})=>({Nom:e.nom,Prénom:e.prenom,Classe:e.classe,"Il/elle":genreOf(e),Rôle:e.role==="atelier"?"Atelier "+e.atelier+(e.aussiVisite?" + visite":""):"Visite","Convoqué à":fmt(cv.h),Visites:cv.visites.map(x=>fmt(x.t)).join(", "),Familles:cv.visites.map(x=>x.fs.map(f=>f.nom).join("+")).join(" / "),"Libéré à":fmt(cv.fin),Présence:e.presence||""}));
   const at=Object.values(S.ateliers).map(a=>({Atelier:a.nom,Pôle:a.pole,Salle:a.salle,Professeur:a.prof,Horaires:a.horaires,Matériel:a.materiel,"Fiche reçue":a.ficheRecue?"oui":"non",Élèves:a.eleves}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(fams.length?fams:[{Créneau:""}]),"Familles");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(el.length?el:[{Nom:""}]),"Élèves");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(at.length?at:[{Atelier:""}]),"Ateliers");
