@@ -161,9 +161,11 @@ function famsOf(sid){return Object.values(S.familles).filter(f=>f.statut!=="abse
 function visitsOf(sid){const starts=new Map();famsOf(sid).forEach(f=>{const st=f.hDepart?tmin(f.hDepart):tmin(f.slot);if(st==null)return;if(!starts.has(st))starts.set(st,[]);starts.get(st).push(f);});return [...starts.entries()].sort((a,b)=>a[0]-b[0]).map(([t,fs])=>({t,fs}));}
 function convoc(e){const c=C();const v=visitsOf(e.id);let h=null,role="",fin=tmin(c.heureFin);
   if(e.role==="atelier"){h=tmin(e.heureConv)??tmin(c.heureAteliers);role=`participera à l'atelier ${e.atelier||""}`.trim();
-    if(e.aussiVisite&&v.length){h=Math.min(h,v[0].t-c.avance);role+=` et accompagnera ${v.length>1?v.length+" familles (visites à "+v.map(x=>fmt(x.t)).join(" et ")+")":"une famille (visite à "+fmt(v[0].t)+")"}`;}}
+    if(v.length){h=Math.min(h,v[0].t-c.avance);role+=` et accompagnera ${v.length>1?v.length+" familles (visites à "+v.map(x=>fmt(x.t)).join(" et ")+")":"une famille (visite à "+fmt(v[0].t)+")"}`;}}
   else if(v.length){h=v[0].t-c.avance;role=v.length===1?`accompagnera une famille lors de cette matinée (visite de ${fmt(v[0].t)} à ${fmt(v[0].t+c.dureeVisite)})`:`accompagnera ${v.length} familles lors de cette matinée (visites à ${v.map(x=>fmt(x.t)).join(", ").replace(/, ([^,]*)$/," et $1")})`;}
   else {h=tmin(e.heureConv)??tmin(c.heureReserve);role="sera en réserve pour accompagner les familles selon l'affluence";}
+  const own=v.find(x=>x.fs.some(f=>f.fige));if(own){const ff=own.fs.find(f=>f.fige);const lien=ff.lien?` (${ff.lien})`:"";
+    role=v.length===1&&e.role!=="atelier"?`accompagnera sa famille${lien} lors de la visite de ${fmt(own.t)}`:role+`, dont la visite de sa famille${lien} à ${fmt(own.t)}`;}
   return {h,role,fin,visites:v,reserve:e.role!=="atelier"&&!v.length};}
 /* ============ Genre déduit du prénom (corrigeable à la main) ============ */
 // Prénoms courants en France (dont prénoms d'origine maghrébine, portugaise, turque, africaine, flamande).
@@ -186,10 +188,10 @@ const ilElle=e=>{const g=genreOf(e);return g==="elle"?"Elle":g==="il"?"Il":"Il/E
 const accord=e=>{const g=genreOf(e);return g==="elle"?"e":g==="il"?"":"(e)";};
 
 /* ============ Attribution automatique ============ */
-function busyMap(excl){const m={},c=C();Object.values(S.familles).forEach(f=>{if(f.statut==="absent"||(excl&&excl.has(f.id)))return;const sid=f.eleve||f.elevePrevu;if(!sid)return;const st=f.hDepart?tmin(f.hDepart):tmin(f.slot);if(st==null)return;const end=f.hRetour?tmin(f.hRetour):st+c.dureeVisite+c.battement;(m[sid]=m[sid]||[]).push({start:st,end,fam:f.id});});return m;}
+function busyMap(excl){const m={},c=C();Object.values(S.familles).forEach(f=>{if(f.statut==="absent"||(excl&&excl.has(f.id)))return;const sid=f.eleve||f.elevePrevu;if(!sid)return;const st=f.hDepart?tmin(f.hDepart):tmin(f.slot);if(st==null)return;const end=f.hRetour?tmin(f.hRetour):st+c.dureeVisite+c.battement;(m[sid]=m[sid]||[]).push({start:st,end,fam:f.id,fige:!!f.fige});});return m;}
 function allocate(fams){
   const c=C(),targets=new Set(fams.map(f=>f.id)),busy=busyMap(targets);
-  const studs=Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence!=="absent");
+  const studs=Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence!=="absent"&&!e.exclusif);
   const order=fams.slice().sort((a,b)=>(tmin(a.slot)??9999)-(tmin(b.slot)??9999)||norm(a.nom).localeCompare(norm(b.nom)));
   const out=[],missing=[];
   const nVis=s=>new Set((busy[s.id]||[]).map(x=>x.start)).size;
@@ -200,7 +202,7 @@ function allocate(fams){
     if(free.length){const lastEnd=s=>Math.max(-1,...(busy[s.id]||[]).filter(x=>x.end<=t).map(x=>x.end));
       free.sort((a,b)=>((b.presence==="present")-(a.presence==="present"))||((b.confirme!==false)-(a.confirme!==false))||(c.strategie==="reserve"?nVis(b)-nVis(a):nVis(a)-nVis(b))||((a.role==="visite"?0:1)-(b.role==="visite"?0:1))||(nVis(a)&&nVis(b)?lastEnd(b)-lastEnd(a):0)||(niveau(a.classe)-niveau(b.classe))||norm(a.nom).localeCompare(norm(b.nom)));
       pick=free[0];}
-    else if(c.maxFamilles>1){const grp=studs.filter(s=>{const at=(busy[s.id]||[]).filter(x=>x.start===t);return at.length>0&&at.length<c.maxFamilles;});
+    else if(c.maxFamilles>1){const grp=studs.filter(s=>{const at=(busy[s.id]||[]).filter(x=>x.start===t);return at.length>0&&at.length<c.maxFamilles&&!at.some(x=>x.fige);});
       grp.sort((a,b)=>(busy[a.id]||[]).filter(x=>x.start===t).length-(busy[b.id]||[]).filter(x=>x.start===t).length);pick=grp[0]||null;if(pick)f._grouped=true;}
     if(pick){(busy[pick.id]=busy[pick.id]||[]).push({start:t,end:t+c.dureeVisite+c.battement,fam:f.id});out.push([f,pick]);}else missing.push(f);}
   return {out,missing};}
@@ -210,8 +212,9 @@ async function applyAlloc(fams,clearFirst){const res=allocate(fams.map(f=>clearF
   await putMany("familles",entries);return res;}
 /* réattribue les familles à venir d'un élève devenu indisponible */
 async function repairFor(sid,reason){const c=C();const now=nowMin();const busyLive=Object.values(S.familles).find(f=>f.eleve===sid&&f.statut==="visite");
-  const victims=Object.values(S.familles).filter(f=>f.elevePrevu===sid&&!f.eleve&&(f.statut==="inscrit"||f.statut==="arrive"||!f.statut)&&(reason==="absent"||(busyLive&&tmin(f.slot)<tmin(busyLive.hDepart)+c.dureeVisite+c.battement)));
-  if(!victims.length)return;const res=await applyAlloc(victims.map(f=>({...f,elevePrevu:null})),true);
+  const victims=Object.values(S.familles).filter(f=>f.elevePrevu===sid&&!f.eleve&&(f.statut==="inscrit"||f.statut==="arrive"||!f.statut)&&(reason==="absent"||(!f.fige&&busyLive&&tmin(f.slot)<tmin(busyLive.hDepart)+c.dureeVisite+c.battement)));
+  if(!victims.length)return;const lost=victims.filter(f=>f.fige);if(lost.length)await putMany("familles",lost.map(f=>[f.id,{...f,fige:false,figeAvant:sid}]));
+  const res=await applyAlloc(victims.map(f=>({...f,fige:false,elevePrevu:null})),true);if(lost.length)setTimeout(()=>toast(`Attention : ${fullName(S.eleves[sid]||{})} devait accompagner sa famille (${lost.map(f=>f.nom).join(", ")}). Un autre élève a été prévu.`,8000),7200);
   const msg=res.out.map(([f,s])=>`${f.nom} (${f.slot}) → ${fullName(S.eleves[s.id])}`).join(" · ");
   toast((msg?"Réattribué : "+msg:"")+(res.missing.length?` ${res.missing.length} famille(s) sans élève disponible.`:""),7000);}
 
@@ -612,6 +615,28 @@ function bindMerci(){const b=$("#ltPdf");if(!b)return;b.onclick=pdfMerci;
   $("#ltReset").onclick=()=>{S.config.lettre={};saveLocal();render();};}
 
 
+/* ============ Élève figé sur une famille (frère, sœur, cousin…) ============ */
+const figePill=f=>f&&f.fige?`<span class="pill info" title="Attribution figée : jamais modifiée automatiquement">figé${f.lien?" · "+esc(f.lien):""}</span>`:"";
+function figeConflicts(fid,sid,excl){const f=S.familles[fid],c=C(),t=tmin(f.slot);if(t==null||!sid)return [];
+  return famList().filter(x=>x.id!==fid&&!x.eleve&&x.statut!=="absent"&&x.elevePrevu===sid&&(excl||(tmin(x.slot)!=null&&Math.abs(tmin(x.slot)-t)<c.dureeVisite+c.battement)));}
+function figerDlg(fid){const f=S.familles[fid];const cur=f.fige?f.elevePrevu:(f.elevePrevu||"");const list=Object.values(S.eleves).filter(e=>e.presence!=="absent").sort((a,b)=>norm(a.nom).localeCompare(norm(b.nom)));
+  openDlg(`Élève figé pour ${esc(f.nom)} (${esc(f.slot||"")})`,`<p class="small muted" style="margin:0">Pour un élève qui accompagne sa propre famille (frère, sœur, cousin…). Cette attribution n'est jamais modifiée par « Tout recalculer » ni par les remplacements automatiques du jour J.</p>
+    <label class="f">Élève<select id="fgS"><option value="">— aucun : attribution automatique —</option>${list.map(e=>`<option value="${e.id}" ${e.id===cur?"selected":""}>${esc(fullName(e))} (${esc(e.classe)})${e.role==="atelier"?" · atelier "+esc(e.atelier||""):""}</option>`).join("")}</select></label>
+    <label class="f">Lien avec la famille<input type="text" id="fgL" value="${esc(f.lien||"")}" placeholder="petit frère, sœur, cousine…"></label>
+    <label class="row small"><input type="checkbox" id="fgX"> Ne lui attribuer aucune autre visite (il ou elle vient seulement pour sa famille)</label>
+    <div class="alert" id="fgW" hidden></div>`,
+  `${f.fige?'<button class="btn ghost" id="fgOff" style="color:var(--bad)">Défiger</button><span class="sp"></span>':""}<button class="btn" data-close>Annuler</button><button class="btn pri" id="fgOk">Figer</button>`,d=>{
+    const sel=d.querySelector("#fgS"),ex=d.querySelector("#fgX"),w=d.querySelector("#fgW");
+    const upd=()=>{const sid=sel.value;const e=S.eleves[sid];if(e&&!d._init){ex.checked=!!e.exclusif;}d._init=false;
+      const cf=figeConflicts(fid,sid,ex.checked);const hard=cf.filter(x=>x.fige);const soft=cf.filter(x=>!x.fige);
+      w.hidden=!cf.length;w.className="alert"+(hard.length?" bad":"");w.innerHTML=[hard.length?`${esc(titleCase((e||{}).prenom))} est déjà figé(e) sur ${hard.map(x=>esc(x.nom)+" ("+esc(x.slot)+")").join(", ")}.`:"",soft.length?`${soft.map(x=>esc(x.nom)+" ("+esc(x.slot)+")").join(", ")} ${soft.length>1?"seront confiées":"sera confiée"} à un autre élève.`:""].filter(Boolean).join(" ");};
+    d._init=true;const e0=S.eleves[cur];ex.checked=!!(e0&&e0.exclusif);upd();sel.onchange=()=>{d._init=false;upd();};ex.onchange=()=>{d._init=true;upd();};
+    d.querySelector("#fgOk").onclick=async()=>{const sid=sel.value;if(!sid)return toast("Choisis l'élève.");const cf=figeConflicts(fid,sid,ex.checked);if(cf.some(x=>x.fige))return toast("Cet élève est déjà figé sur une autre famille au même moment.");
+      d.close();await put("familles",fid,{...S.familles[fid],fige:true,lien:d.querySelector("#fgL").value.trim(),elevePrevu:sid,attend:null});
+      const e=S.eleves[sid];if(!!e.exclusif!==ex.checked)await patch("eleves",sid,{exclusif:ex.checked});
+      let msg=`${fullName(e)} accompagnera ${S.familles[fid].nom}.`;if(cf.length){const r=await applyAlloc(cf.map(x=>({...x,elevePrevu:null})),true);msg+=` ${r.out.length} autre(s) famille(s) réattribuée(s)${r.missing.length?`, ${r.missing.length} sans élève`:""}.`;}
+      toast(msg,6000);};
+    const off=d.querySelector("#fgOff");if(off)off.onclick=async()=>{d.close();const sid=f.elevePrevu;await put("familles",fid,{...S.familles[fid],fige:false,lien:""});if(sid&&S.eleves[sid]&&S.eleves[sid].exclusif&&!famList().some(x=>x.fige&&x.elevePrevu===sid))await patch("eleves",sid,{exclusif:false});toast("Attribution défigée : elle peut de nouveau être recalculée.");};});}
 /* ---------- Inscriptions ---------- */
 function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
   if(q)fams=fams.filter(f=>norm(`${f.nom} ${f.prenom} ${f.email} ${f.tel} ${f.infos}`).includes(q));
@@ -624,7 +649,7 @@ function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
   <input type="search" class="big" id="qFam" placeholder="Rechercher une famille par nom, prénom, e-mail… (tous créneaux)" value="${esc(UI.q)}" autocomplete="off">
   <div class="chips" style="margin:12px 0 14px"><button class="chip" aria-pressed="${UI.slot==="all"}" data-slot="all">Tous <span class="c">${all.length}</span></button>${slots.map(s=>`<button class="chip" aria-pressed="${UI.slot===s}" data-slot="${s}">${s} <span class="c">${famBySlot(s).length}</span></button>`).join("")}</div>
   ${all.length?`<div class="tbl-wrap"><table><thead><tr><th>Famille</th><th>Pers.</th><th>Contact</th><th>Informations</th><th>Élève</th><th>Statut</th><th></th></tr></thead><tbody>
-  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':f.source==="sur place"?' <span class="pill acc">sur place</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
+  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':f.source==="sur place"?' <span class="pill acc">sur place</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'} ${figePill(f)}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
   </tbody></table></div>`:`<div class="empty"><b>Pas encore d'inscriptions ici</b>Dans Evento, ouvre les résultats du sondage, puis <em>Exporter</em> (Excel ou CSV) et importe le fichier avec le bouton ci-dessus.<br>Tu peux aussi sélectionner le tableau des réponses, le copier et utiliser « Coller depuis Evento ».</div>`}`;
   const qi=$("#qFam");qi.oninput=()=>{UI.q=qi.value;render();};
   v.querySelectorAll("[data-slot]").forEach(b=>b.onclick=()=>{UI.slot=b.dataset.slot;UI.q="";render();});
@@ -638,9 +663,11 @@ function editFam(id,presetSlot){const f=id?S.familles[id]:{nom:"",prenom:"",nb:2
   <label class="f">Créneau<select id="fS">${slotsAll().map(s=>`<option ${f.slot===s?"selected":""}>${s}</option>`).join("")}</select></label><label class="f">Nombre de personnes<input type="number" id="fB" min="1" value="${esc(f.nb||1)}"></label>
   <label class="f">E-mail<input type="email" id="fE" value="${esc(f.email||"")}"></label><label class="f">Téléphone<input type="text" id="fT" value="${esc(f.tel||"")}"></label></div>
   <label class="f">Informations (enfant, école, remarques)<input type="text" id="fI" value="${esc(f.infos||"")}"></label>
+  ${id?`<div class="row" style="justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 10px"><span class="small">${f.fige?`Élève figé : <b>${esc(fullName(S.eleves[f.elevePrevu]||{}))}</b> ${figePill(f)}`:"Un élève veut accompagner cette famille (frère, sœur, cousin…) ?"}</span><button type="button" class="btn sm" id="fFige">${f.fige?"Modifier":"Figer un élève"}</button></div>`:""}
   ${id?`<label class="f">Statut<select id="fSt">${Object.entries(ST).map(([k,[l]])=>`<option value="${k}" ${(f.statut||"inscrit")===k?"selected":""}>${l}</option>`).join("")}</select></label>`:""}`,
   `${id?'<button class="btn ghost" id="fDel" style="color:var(--bad)">Supprimer</button><span class="sp"></span>':""}<button class="btn" data-close>Annuler</button><button class="btn pri" id="fOk">Enregistrer</button>`,d=>{
-    d.querySelector("#fOk").onclick=()=>{const g=k=>d.querySelector(k)?d.querySelector(k).value.trim():"";if(!g("#fN"))return toast("Indique au moins le nom.");const ns=g("#fS");const nf={...f,nom:g("#fN").toUpperCase(),prenom:g("#fP"),slot:ns,nb:+g("#fB")||1,email:g("#fE"),tel:g("#fT"),infos:g("#fI"),statut:id?g("#fSt"):"inscrit"};if(id&&ns!==f.slot&&!f.eleve)nf.elevePrevu=null;put("familles",id||uid(),nf);d.close();};
+    d.querySelector("#fOk").onclick=()=>{const g=k=>d.querySelector(k)?d.querySelector(k).value.trim():"";if(!g("#fN"))return toast("Indique au moins le nom.");const ns=g("#fS");const nf={...f,nom:g("#fN").toUpperCase(),prenom:g("#fP"),slot:ns,nb:+g("#fB")||1,email:g("#fE"),tel:g("#fT"),infos:g("#fI"),statut:id?g("#fSt"):"inscrit"};if(id&&ns!==f.slot&&!f.eleve&&!f.fige)nf.elevePrevu=null;put("familles",id||uid(),nf);d.close();};
+    const fg=d.querySelector("#fFige");if(fg)fg.onclick=()=>{d.close();figerDlg(id);};
     const x=d.querySelector("#fDel");if(x)x.onclick=async()=>{d.close();if(await ask(`Supprimer la famille ${esc(f.nom)} ?`,"Supprimer",true))del("familles",id);};});}
 
 /* lecture de fichiers tableur */
@@ -766,15 +793,16 @@ function vPlan(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),slot
     <button class="btn" id="pdfConv">Convocations (PDF)</button><button class="btn" id="pdfPlan">Planning élèves (PDF)</button><button class="btn" id="pdfAcc">Liste d'accueil papier (PDF)</button><button class="btn" id="xlsAll">Tout en Excel</button></div>
   <div id="planBody"></div>`;
   const pb=$("#planBody");
-  if(UI.planView==="slot"){pb.innerHTML=fams.length?`<div class="tbl-wrap"><table><thead><tr><th>Famille</th><th>Pers.</th><th>Élève accompagnateur</th><th>Arrivée élève</th></tr></thead><tbody>${slots.map(s=>{const fs=famBySlot(s).filter(f=>f.statut!=="absent");if(!fs.length)return"";return `<tr class="slot-h"><td colspan="4">${s} → ${fmt(tmin(s)+c.dureeVisite)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille(s)</span></td></tr>`+fs.map(f=>{const sid=f.eleve||f.elevePrevu;return `<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}</td><td class="t">${esc(f.nb||1)}</td><td>${f.eleve?stuLabel(f.eleve)+' <span class="pill info">jour J</span>':`<select data-assign="${f.id}" style="max-width:100%"><option value="">— aucun —</option>${optStudents(f,sid)}</select>`}${sid&&(grouped[sid+"|"+f.slot]>1)?' <span class="pill warn">2 familles</span>':""}</td><td class="t">${sid&&S.eleves[sid]?fmt(convoc(S.eleves[sid]).h):""}</td></tr>`;}).join("");}).join("")}</tbody></table></div>`:`<div class="empty"><b>Pas encore de familles</b>Importe les inscriptions, puis clique sur « Compléter le planning ».</div>`;
-    pb.querySelectorAll("[data-assign]").forEach(sel=>sel.onchange=()=>patch("familles",sel.dataset.assign,{elevePrevu:sel.value||null}));}
+  if(UI.planView==="slot"){pb.innerHTML=fams.length?`<div class="tbl-wrap"><table><thead><tr><th>Famille</th><th>Pers.</th><th>Élève accompagnateur</th><th>Arrivée élève</th></tr></thead><tbody>${slots.map(s=>{const fs=famBySlot(s).filter(f=>f.statut!=="absent");if(!fs.length)return"";return `<tr class="slot-h"><td colspan="4">${s} → ${fmt(tmin(s)+c.dureeVisite)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille(s)</span></td></tr>`+fs.map(f=>{const sid=f.eleve||f.elevePrevu;return `<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}</td><td class="t">${esc(f.nb||1)}</td><td>${f.eleve?stuLabel(f.eleve)+' <span class="pill info">jour J</span>':f.fige?`${stuLabel(sid)} ${figePill(f)} <button class="btn ghost sm" data-fige="${f.id}">Modifier</button>`:`<span class="row" style="gap:4px;flex-wrap:nowrap"><select data-assign="${f.id}" style="max-width:100%;min-width:0"><option value="">— aucun —</option>${optStudents(f,sid)}</select><button class="btn ghost sm" data-fige="${f.id}" title="Figer un élève sur cette famille (frère, sœur, cousin…)">Figer</button></span>`}${sid&&(grouped[sid+"|"+f.slot]>1)?' <span class="pill warn">2 familles</span>':""}</td><td class="t">${sid&&S.eleves[sid]?fmt(convoc(S.eleves[sid]).h):""}</td></tr>`;}).join("");}).join("")}</tbody></table></div>`:`<div class="empty"><b>Pas encore de familles</b>Importe les inscriptions, puis clique sur « Compléter le planning ».</div>`;
+    pb.querySelectorAll("[data-assign]").forEach(sel=>sel.onchange=()=>patch("familles",sel.dataset.assign,{elevePrevu:sel.value||null}));
+    pb.querySelectorAll("[data-fige]").forEach(b=>b.onclick=()=>figerDlg(b.dataset.fige));}
   else{const el=Object.values(S.eleves).map(e=>({e,cv:convoc(e)})).filter(x=>x.e.presence!=="absent").sort((a,b)=>(a.cv.h??9999)-(b.cv.h??9999)||norm(a.e.nom).localeCompare(norm(b.e.nom)));
     pb.innerHTML=el.length?`<div class="tbl-wrap"><table><thead><tr><th>Arrivée</th><th>Élève</th><th>Classe</th><th>Mission</th><th>Familles</th></tr></thead><tbody>${el.map(({e,cv})=>`<tr><td class="t">${fmt(cv.h)}</td><td class="name">${esc(fullName(e))}</td><td>${esc(e.classe)}</td><td class="small">${e.role==="atelier"?`Atelier ${esc(e.atelier)}`:""}${cv.visites.length?(e.role==="atelier"?" + ":"")+cv.visites.map(x=>`<span class="t">${fmt(x.t)}</span>`).join(", "):cv.reserve?'<span class="pill">réserve</span>':""}</td><td class="small">${cv.visites.map(x=>x.fs.map(f=>esc(f.nom)).join(" + ")).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty"><b>Aucun élève</b>Importe la liste dans l'onglet Élèves.</div>`;}
   const num=(id,k)=>{$(id).onchange=e=>putConfig({[k]:Math.max(0,+e.target.value||0)});};num("#cDur","dureeVisite");num("#cBat","battement");num("#cAv","avance");num("#cMax","maxVisites");num("#cGrp","maxFamilles");
   $("#cStr").onchange=e=>putConfig({strategie:e.target.value});[["#cHA","heureAteliers"],["#cHR","heureReserve"],["#cHF","heureFin"]].forEach(([i,k])=>$(i).onchange=e=>{if(tmin(e.target.value)==null)return toast("Heure non reconnue (ex. 8h50).");putConfig({[k]:fmt(tmin(e.target.value))});});
   v.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{UI.planView=b.dataset.pv;render();});
   $("#btnFill").onclick=async()=>{const todo=famList().filter(f=>f.statut!=="absent"&&!f.eleve&&!f.elevePrevu);if(!todo.length)return toast("Toutes les familles ont déjà un élève.");const r=await applyAlloc(todo,false);toast(`${r.out.length} famille(s) placée(s)${r.missing.length?`, ${r.missing.length} sans élève disponible`:""}.`);};
-  $("#btnRedo").onclick=async()=>{if(!(await ask("Recalculer toutes les attributions ? Les heures de convocation peuvent changer : à faire avant de distribuer les convocations.","Tout recalculer")))return;const todo=famList().filter(f=>(f.statut||"inscrit")==="inscrit"||f.statut==="arrive").filter(f=>!f.eleve);const r=await applyAlloc(todo,true);toast(`Planning recalculé : ${r.out.length} famille(s) placée(s)${r.missing.length?`, ${r.missing.length} sans élève`:""}.`);};
+  $("#btnRedo").onclick=async()=>{if(!(await ask("Recalculer toutes les attributions ? Les familles figées gardent leur élève. Les heures de convocation peuvent changer : à faire avant de distribuer les convocations.","Tout recalculer")))return;const todo=famList().filter(f=>(f.statut||"inscrit")==="inscrit"||f.statut==="arrive").filter(f=>!f.eleve&&!f.fige);const r=await applyAlloc(todo,true);toast(`Planning recalculé : ${r.out.length} famille(s) placée(s)${r.missing.length?`, ${r.missing.length} sans élève`:""}.`);};
   $("#pdfConv").onclick=pdfConvocations;$("#pdfPlan").onclick=pdfPlanning;$("#pdfAcc").onclick=pdfAccueil;$("#xlsAll").onclick=xlsExport;
 }
 function optStudents(f,cur){const c=C(),t=tmin(f.slot),busy=busyMap(new Set([f.id]));return Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence!=="absent").map(e=>{const iv=busy[e.id]||[];const ok=iv.every(x=>t>=x.end||t+c.dureeVisite+c.battement<=x.start);const same=iv.filter(x=>x.start===t).length;return {e,ok,same,n:new Set(iv.map(x=>x.start)).size};})
@@ -821,7 +849,7 @@ function stuState(sid,iv){const e=S.eleves[sid];const c=C(),now=nowMin();if(!e)r
   return {k:"libre",label:"présent et libre",cls:"ok"};}
 /* élèves guides présents et libres, du plus disponible au moins disponible */
 function freeGuides(excludeFid){const c=C(),now=nowMin(),iv=inVisitMap(),fams=famList();
-  return Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence==="present"&&!iv[e.id]).map(e=>{
+  return Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence==="present"&&!iv[e.id]&&!e.exclusif).map(e=>{
     const nx=fams.filter(f=>f.id!==excludeFid&&!f.eleve&&f.elevePrevu===e.id&&famActive(f)&&tmin(f.slot)!=null).map(f=>({t:tmin(f.slot),f})).filter(x=>x.t>=now-20&&x.t<now+c.dureeVisite+c.battement).sort((a,b)=>a.t-b.t)[0]||null;
     return {e,nx,done:fams.filter(f=>f.eleve===e.id).length};})
     .sort((a,b)=>((a.nx?1:0)-(b.nx?1:0))||(a.done-b.done)||niveau(a.e.classe)-niveau(b.e.classe)||norm(a.e.nom).localeCompare(norm(b.e.nom)));}
@@ -859,7 +887,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   </div>
   <div class="card dep" style="margin-bottom:16px"><div class="card-h"><h3>Prochains départs</h3><span class="small muted">${rows.length?`${rows.length} famille(s) entre ${fmt(now-60)} et ${fmt(now+20)}${alerts?` · <b style="color:var(--bad)">${alerts} à régler</b>`:" · tout est en ordre"}`:"aucun départ prévu dans les 20 prochaines minutes"}</span></div>
     ${rows.length?`<div class="deprows">${rows.map(r=>`<div class="deprow lv${r.level}"><span class="t">${esc(r.f.slot)}</span>
-      <div class="dep-f"><b>${esc(r.f.nom)}</b> <span class="pill ${r.famCls}">${esc(r.famLab)}</span></div>
+      <div class="dep-f"><b>${esc(r.f.nom)}</b> <span class="pill ${r.famCls}">${esc(r.famLab)}</span> ${figePill(r.f)}</div>
       <div class="dep-s">${r.sid?`<span class="nm">${esc(fullName(S.eleves[r.sid]||{}))}</span>`:'<span class="muted">aucun élève</span>'} <span class="pill ${r.s.cls}">${esc(r.f.attend?"attendu : "+r.s.label:r.s.label)}</span> ${r.sid?callPill(r.sid):""}</div>
       <div class="row dep-a">${r.actions.join("")}</div></div>`).join("")}</div>`:""}
   </div>
@@ -900,7 +928,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   clearInterval(liveTimer);liveTimer=setInterval(()=>{if(UI.tab!=="accueil"){clearInterval(liveTimer);return;}const k=$("#clk");if(k&&k.textContent!==fmt(nowMin())&&!dlg.open)render();},20000);
 }
 function famCard(f){const st=f.statut||"inscrit";const now=nowMin();const plan=f.elevePrevu&&S.eleves[f.elevePrevu];let right="",meta=[`<span class="t">${esc(f.slot||"—")}</span>`,`${esc(f.nb||1)} pers.`];
-  if(st==="inscrit"){if(plan){const s=stuState(plan.id);meta.push(`élève prévu : <b>${esc(fullName(plan))}</b> <span class="pill ${s.cls}">${esc(s.k==="visite"?"en visite":s.k==="libre"?"présent":s.label)}</span>`);}
+  if(st==="inscrit"){if(plan){const s=stuState(plan.id);meta.push(`élève prévu : <b>${esc(fullName(plan))}</b> <span class="pill ${s.cls}">${esc(s.k==="visite"?"en visite":s.k==="libre"?"présent":s.label)}</span> ${figePill(f)}`);}
     if(tmin(f.slot)!=null&&now>tmin(f.slot)+delaiRetard())meta.push(`<span class="pill bad">en retard (+${now-tmin(f.slot)} min)</span>`);
     right=`<button class="btn pri" data-arr="${f.id}">Arrivée</button><button class="btn sm ghost" data-famabs="${f.id}" title="Marquer absente">Absente</button>`;}
   else if(st==="arrive"){meta.push(`arrivée à ${esc(f.hArrivee||"")}`);if(f.attend)meta.push(`attend <b>${esc(fullName(S.eleves[f.attend]||{}))}</b> <span class="pill warn">${esc(stuState(f.attend).k==="visite"?"en visite":stuState(f.attend).label)}</span>`);right=`<button class="btn pri" data-arr="${f.id}">Attribuer un élève</button>`;}
@@ -913,11 +941,11 @@ function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const 
   const alts=freeGuides(f.id).filter(x=>x.e.id!==planId);
   const late=tmin(f.slot)!=null?now-tmin(f.slot):0;
   const recent=Object.entries(iv).filter(([sid,fs])=>now-tmin(fs[0].hDepart)<=10&&fs.length<c.maxFamilles).map(([sid,fs])=>({sid,fs}));
-  const altBtn=(x,i)=>(ecranOn()?`<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm pri" data-calld="${x.e.id}" style="flex:none">Appeler</button>`:"")+`<button class="btn" style="justify-content:space-between;text-align:left;flex:1;min-width:0" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span>${i===0&&!x.nx?' <span class="pill ok">conseillé</span>':""}</span><span class="small">${x.nx?`<span class="pill warn">prévu à ${fmt(x.nx.t)} avec ${esc(x.nx.f.nom)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`+(ecranOn()?"</div>":"");
-  let planBlock="";
-  if(plan){if(ps.k==="libre")planBlock=`<div class="alert ok">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)}), présent et libre. ${callPill(plan.id)}<div class="row" style="margin-top:8px">${ecranOn()?`<button class="btn pri lg" data-calld="${plan.id}">${callOf(plan.id)?"Rappeler":"Appeler"} ${esc(prenomOf(plan.id))} sur l'écran</button><button class="btn ok" data-go="${plan.id}">Déjà là : partir</button>`:`<button class="btn ok lg" data-go="${plan.id}">Partir avec ${esc(prenomOf(plan.id))}</button>`}</div></div>`;
-    else if(ps.k==="visite")planBlock=`<div class="alert">Élève prévu : <b>${esc(fullName(plan))}</b> est encore en visite (${esc(ps.label)}).<div class="row" style="margin-top:8px"><button class="btn" data-waitd="${plan.id}">Attendre ${esc(prenomOf(plan.id))}</button><span class="small">ou choisis un autre élève ci-dessous.</span></div></div>`;
-    else planBlock=`<div class="alert bad">Élève prévu : <b>${esc(fullName(plan))}</b> ${esc(ps.label)}. Choisis un autre élève ci-dessous.${ps.k==="attendu"?` <button class="btn sm" data-markabs="${plan.id}">Le marquer absent</button>`:""}</div>`;}
+  const altBtn=(x,i)=>(ecranOn()?`<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm pri" data-calld="${x.e.id}" style="flex:none">Appeler</button>`:"")+`<button class="btn" style="justify-content:space-between;text-align:left;flex:1;min-width:0" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span>${i===0&&!x.nx?' <span class="pill ok">conseillé</span>':""}</span><span class="small">${x.nx?`<span class="pill warn">${x.nx.f.fige?"réservé à sa famille":"prévu"} à ${fmt(x.nx.t)} avec ${esc(x.nx.f.nom)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`+(ecranOn()?"</div>":"");
+  let planBlock="";const lienTxt=f.fige?` — c'est sa famille${f.lien?" ("+esc(f.lien)+")":""}`:"";
+  if(plan){if(ps.k==="libre")planBlock=`<div class="alert ok">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)})${lienTxt}, présent et libre. ${callPill(plan.id)}<div class="row" style="margin-top:8px">${ecranOn()?`<button class="btn pri lg" data-calld="${plan.id}">${callOf(plan.id)?"Rappeler":"Appeler"} ${esc(prenomOf(plan.id))} sur l'écran</button><button class="btn ok" data-go="${plan.id}">Déjà là : partir</button>`:`<button class="btn ok lg" data-go="${plan.id}">Partir avec ${esc(prenomOf(plan.id))}</button>`}</div></div>`;
+    else if(ps.k==="visite")planBlock=`<div class="alert">Élève prévu : <b>${esc(fullName(plan))}</b>${lienTxt} est encore en visite (${esc(ps.label)}).${f.fige?" Le mieux est sans doute de l'attendre.":""}<div class="row" style="margin-top:8px"><button class="btn" data-waitd="${plan.id}">Attendre ${esc(prenomOf(plan.id))}</button><span class="small">ou choisis un autre élève ci-dessous.</span></div></div>`;
+    else planBlock=`<div class="alert bad">Élève prévu : <b>${esc(fullName(plan))}</b>${lienTxt} ${esc(ps.label)}. Choisis un autre élève ci-dessous${f.fige&&ps.k==="attendu"?", ou fais patienter la famille quelques minutes":""}.${ps.k==="attendu"?` <button class="btn sm" data-markabs="${plan.id}">Le marquer absent</button>`:""}</div>`;}
   openDlg(`Accueil : ${esc(f.nom)} ${esc(f.prenom||"")}`,`<div class="row"><span class="pill">${esc(f.slot||"sans créneau")}</span><span class="pill">${esc(f.nb||1)} pers.</span>${late>10?`<span class="pill warn">${late} min de retard</span>`:late<-10?`<span class="pill info">${-late} min d'avance</span>`:""}</div>
   <p class="small muted" style="margin:0">Donne le feuillet d'accueil à la famille, puis choisis l'élève qui l'accompagne.</p>
   ${planBlock}
@@ -936,7 +964,7 @@ async function goVisit(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());aw
 /* cas 3 : la famille attend son élève, encore en visite ; il lui sera proposé dès son retour */
 async function waitFor(fid,sid){const f=S.familles[fid];await patch("familles",fid,{statut:"arrive",attend:sid,hArrivee:f.hArrivee||fmt(nowMin())});toast(`${f.nom} attend ${prenomOf(sid)} : la famille lui sera proposée dès son retour.`);}
 /* cas 2 (anticipé) : l'élève prévu est absent, pas arrivé ou en retard de visite → un élève libre prend la famille */
-async function replacePlan(fid){const f=S.familles[fid];const L=freeGuides(fid).filter(x=>x.e.id!==f.elevePrevu);const best=L.find(x=>!x.nx)||L[0];
+async function replacePlan(fid){const f=S.familles[fid];if(f.fige&&!(await ask(`${esc(fullName(S.eleves[f.elevePrevu]||{}))} devait accompagner sa famille${f.lien?" ("+esc(f.lien)+")":""}. Confier quand même ${esc(f.nom)} à un autre élève ?`,"Remplacer")))return;if(f.fige)await patch("familles",fid,{fige:false,figeAvant:f.elevePrevu});const L=freeGuides(fid).filter(x=>x.e.id!==f.elevePrevu);const best=L.find(x=>!x.nx)||L[0];
   if(!best)return toast("Aucun élève libre pour l'instant. La famille sera accueillie à son arrivée par le premier élève disponible.");
   const old=f.elevePrevu;await patch("familles",fid,{elevePrevu:best.e.id,attend:null});toast(`${titleCase(best.e.prenom)} accompagnera ${f.nom} (${f.slot})${old?` à la place de ${prenomOf(old)}`:""}.`,6000);}
 /* cas 1 : la famille ne vient pas → l'élève prévu est libéré, et on lui propose une famille qui attend */
