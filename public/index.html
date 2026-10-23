@@ -51,8 +51,8 @@ const DEFAULT_CONFIG={
   heureAteliers:"8h50", heureReserve:"8h50", heureFin:"12h20",
   responsable:"M. Nollet", signature:"M. Nollet et l'équipe enseignante.", dateCourrier:"", lieuRdv:"auprès de M. Nollet"
 };
-const S={config:{...DEFAULT_CONFIG},eleves:{},familles:{},ateliers:{},taches:{}};
-const COLLS=["eleves","familles","ateliers","taches"];
+const S={config:{...DEFAULT_CONFIG},eleves:{},familles:{},ateliers:{},taches:{},appels:{}};
+const COLLS=["eleves","familles","ateliers","taches","appels"];
 const LS_KEY="po-lkr-2026-v1";
 const UI={tab:"prep",slot:"all",q:"",eFilter:"all",eQ:"",planView:"slot",liveSlot:null,liveQ:""};
 try{const t=localStorage.getItem("po-tab"); if(t) UI.tab=t;}catch(e){}
@@ -78,11 +78,11 @@ try{Object.assign(SY,JSON.parse(localStorage.getItem(SK)||"{}"));}catch(e){}
 SY.busy=false;SY.timer=null;
 function persistSY(){const o={code:SY.code,cfg:SY.cfg,unlocked:SY.unlocked};try{localStorage.setItem(SK,JSON.stringify({...o,etag:SY.etag,base:SY.base}));}catch(e){try{localStorage.setItem(SK,JSON.stringify(o));}catch(_){}}}
 function setSync(kind,msg){const el=$("#sync");if(!el)return;const map={ok:["ok","Synchronisé"],busy:["busy","Synchro…"],off:["","Hors ligne"],err:["err","Erreur de synchro"],local:["local","Enregistré sur cet appareil"],init:["","Connexion…"]};const [c,t]=map[kind]||map.init;el.innerHTML=`<span class="dot ${c}"></span>${esc(t)}`;el.title=msg||t;}
-const payload=()=>JSON.parse(JSON.stringify({config:S.config,eleves:S.eleves,familles:S.familles,ateliers:S.ateliers,taches:S.taches}));
+const payload=()=>JSON.parse(JSON.stringify({config:S.config,eleves:S.eleves,familles:S.familles,ateliers:S.ateliers,taches:S.taches,appels:S.appels}));
 function loadLocal(){try{const raw=localStorage.getItem(LS_KEY);if(raw){const o=JSON.parse(raw);S.config={...DEFAULT_CONFIG,...(o.config||{})};COLLS.forEach(c=>S[c]=o[c]||{});}}catch(e){}}
 function writeLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(payload()));}catch(e){toast("Mémoire de l'appareil pleine : exporte une sauvegarde depuis Documents.");}}
 function saveLocal(){writeLocal();scheduleSync();}
-function applyRemote(d){S.config={...DEFAULT_CONFIG,...(d.config||{})};COLLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(d[c]||{})));writeLocal();if(typeof migrate==="function")migrate();schedule();}
+function applyRemote(d){const prevIV=typeof inVisitMap==="function"?Object.keys(inVisitMap()):[];const prevPres=new Set(Object.values(S.eleves).filter(e=>e.presence==="present").map(e=>e.id));S.config={...DEFAULT_CONFIG,...(d.config||{})};COLLS.forEach(c=>S[c]=JSON.parse(JSON.stringify(d[c]||{})));writeLocal();if(typeof migrate==="function")migrate();schedule();if(typeof onRemoteDay==="function")setTimeout(()=>onRemoteDay(prevIV,prevPres),50);}
 const strip=d=>{const x={...d};delete x.id;return x;};
 async function put(c,id,data){S[c][id]={...strip(data),id};schedule();saveLocal();}
 async function putMany(c,entries){entries.forEach(([id,d])=>S[c][id]={...strip(d),id});schedule();saveLocal();}
@@ -304,6 +304,7 @@ async function mergeFiches(list){const ign=new Set(S.config.fichesIgnorees||[]);
 function guessEtage(salle){const F=FD();const s=norm(salle);if(!s)return "";const m=s.match(/\b(\d)(\d{2})\b/);if(m){const e=+m[1];return F.etages[e]||"";}return "";}
 const profLink=()=>location.origin+"/atelier";
 const enqueteLink=()=>location.origin+"/enquete";
+const ecranLink=()=>location.origin+"/ecran";
 const profCode=()=>S.config.profCode||DEFAULT_PROF_CODE;
 const profMessage=()=>`Bonjour,\n\nPour les portes ouvertes du ${C().dateTexte}, merci de remplir la fiche de votre atelier en ligne (3 minutes) :\n${profLink()}\nCode : ${profCode()}\n\nVous pourrez la modifier ensuite avec le lien reçu après l'envoi. Les informations alimentent directement le feuillet remis aux familles.\n\nMerci !\n${C().responsable}`;
 const pendingCount=a=>Object.keys(a.changes||{}).length+(a.nouveau?1:0);
@@ -781,6 +782,31 @@ function optStudents(f,cur){const c=C(),t=tmin(f.slot),busy=busyMap(new Set([f.i
   .map(({e,ok,same,n})=>`<option value="${e.id}" ${e.id===cur?"selected":""}>${esc(fullName(e))} (${esc(e.classe)})${e.id===cur?"":ok?` · libre${n?", "+n+" visite(s)":""}`:same?" · déjà 1 famille à cette heure":" · occupé"}</option>`).join("");}
 
 
+/* ============ Écran de la salle des élèves : appels et pointages ============ */
+const ecranOn=()=>C().ecranActif!==false;
+const ecranCode=()=>C().ecranCode||"2468";
+const callOf=sid=>{const a=S.appels[sid];return a&&a.etat!=="fini"?a:null;};
+async function callStudent(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());
+  await patch("familles",fid,{statut:"arrive",attend:sid,hArrivee:f.hArrivee||t});
+  await put("appels",sid,{eleve:sid,famille:fid,familleNom:f.nom,at:t,etat:"appel"});
+  toast(`${prenomOf(sid)} est appelé(e) sur l'écran des élèves pour la famille ${f.nom}.`,5000);}
+async function clearCalls(pred){const ids=Object.values(S.appels).filter(a=>a&&pred(a)).map(a=>a.id);if(ids.length)await delMany("appels",ids);}
+const callPill=sid=>{const a=callOf(sid);if(!a)return "";const m=nowMin()-(tmin(a.at)??nowMin());return a.etat==="vient"?`<span class="pill ok">arrive (« J'arrive » à ${esc(a.ackAt||"")})</span>`:`<span class="pill ${m>=3?"bad":"warn"}">appelé${m>0?` il y a ${m} min`:""}</span>`;};
+/* changements venus de l'écran (pointage d'arrivée, retour de visite) */
+function onRemoteDay(prevIV,prevPres){if(UI.tab!=="accueil")return;const iv=inVisitMap();
+  const back=prevIV.filter(sid=>!iv[sid]&&S.eleves[sid]);const arrived=Object.values(S.eleves).filter(e=>e.presence==="present"&&!prevPres.has(e.id));
+  if(arrived.length&&!back.length)toast(`Pointé(s) sur l'écran : ${arrived.map(e=>titleCase(e.prenom)).join(", ")}.`);
+  if(back.length){const sid=back[0];if(waitingFams().length&&!dlg.open)proposeFamily(sid,`${fullName(S.eleves[sid])} est revenu(e) de visite (pointé sur l'écran).`);else toast(`${back.map(id=>titleCase(S.eleves[id].prenom)).join(", ")} de retour de visite (écran).`);}}
+function ecranCard(){const calls=Object.values(S.appels).filter(a=>a&&a.etat!=="fini");
+  return `<div class="sec-t" style="margin-top:0">Écran de la salle des élèves</div>
+    <label class="row small"><input type="checkbox" id="ecOn" ${ecranOn()?"checked":""}> J'appelle les élèves sur l'écran</label>
+    ${ecranOn()?`<p class="small muted" style="margin:4px 0 0">Ouvre <a href="ecran.html" target="_blank" rel="noopener">${esc(ecranLink().replace(/^https?:\/\//,""))}</a> sur la télé ou la tablette de la salle · code écran <b class="t">${esc(ecranCode())}</b> <button class="btn ghost sm" id="ecCode">changer</button></p>
+    ${calls.length?`<div class="sec-t">Appels en cours (${calls.length})</div>${calls.map(a=>`<div class="stu"><span><span class="nm">${esc(fullName(S.eleves[a.eleve]||{}))}</span> <span class="muted small">pour ${esc(a.familleNom)} · ${esc(a.at)}</span> ${callPill(a.eleve)}</span><span class="row" style="gap:4px">${S.familles[a.famille]&&S.familles[a.famille].statut==="arrive"?`<button class="btn sm ok" data-go2="${a.famille}|${a.eleve}">Partir</button>`:""}<button class="btn sm ghost" data-uncall="${a.eleve}" title="Annuler l'appel">✕</button></span></div>`).join("")}`:""}`:""}`;}
+function bindEcran(v){const on=$("#ecOn");if(on)on.onchange=()=>putConfig({ecranActif:on.checked});
+  const cc=$("#ecCode");if(cc)cc.onclick=()=>openDlg("Code de l'écran des élèves",`<p class="small muted" style="margin:0">Ce code sert uniquement à ouvrir l'écran de la salle (prénoms, pointage, appels). Il ne donne pas accès à l'appli.</p><label class="f">Nouveau code (4 à 8 chiffres)<input type="text" id="ecIn" inputmode="numeric" maxlength="8"></label>`,`<button class="btn" data-close>Annuler</button><button class="btn pri" id="ecOk">Enregistrer</button>`,d=>{
+    d.querySelector("#ecOk").onclick=async()=>{const n=d.querySelector("#ecIn").value.trim();if(!/^\d{4,8}$/.test(n))return toast("4 à 8 chiffres.");try{const r=await fetch("/api/ecran",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({op:"setcode",code:SY.code,newCode:n})});if(!r.ok)throw new Error((await r.json()).error||"erreur");await putConfig({ecranCode:n});d.close();toast("Code écran changé : saisis-le sur l'écran de la salle.");}catch(e){toast("Changement impossible : "+e.message);}};});
+  v.querySelectorAll("[data-uncall]").forEach(b=>b.onclick=()=>clearCalls(a=>a.eleve===b.dataset.uncall));
+  v.querySelectorAll("[data-call]").forEach(b=>b.onclick=()=>{const [fid,sid]=b.dataset.call.split("|");callStudent(fid,sid);});}
 /* ---------- Accueil jour J ---------- */
 let liveTimer=null;
 const delaiRetard=()=>+(C().delaiRetard??10);
@@ -806,8 +832,8 @@ function departRows(){const now=nowMin(),iv=inVisitMap(),d=delaiRetard();
     const t=tmin(f.slot),arr=f.statut==="arrive",lateF=!arr&&now>t+d;const sid=f.attend||f.elevePrevu;const s=sid?stuState(sid,iv):stuState(null,iv);
     let famLab=arr?`arrivée ${f.hArrivee||""}`:lateF?`pas arrivée (+${now-t} min)`:now>=t?"attendue":`attendue à ${f.slot}`;const famCls=arr?"ok":lateF?"bad":"";
     let actions=[],level=0;
-    if(arr){if(s.k==="libre"){actions.push(`<button class="btn sm ok" data-go2="${f.id}|${sid}">Partir avec ${esc(prenomOf(sid))}</button>`);}
-      else{level=2;const best=freeGuides(f.id)[0];if(best)actions.push(`<button class="btn sm pri" data-go2="${f.id}|${best.e.id}">Partir avec ${esc(titleCase(best.e.prenom))}</button>`);
+    if(arr){if(s.k==="libre"){if(ecranOn()&&!callOf(sid))actions.push(`<button class="btn sm pri" data-call="${f.id}|${sid}">Appeler ${esc(prenomOf(sid))}</button>`);actions.push(`<button class="btn sm ok" data-go2="${f.id}|${sid}">Partir avec ${esc(prenomOf(sid))}</button>`);}
+      else{level=2;const best=freeGuides(f.id)[0];if(best){if(ecranOn()&&!callOf(best.e.id))actions.push(`<button class="btn sm pri" data-call="${f.id}|${best.e.id}">Appeler ${esc(titleCase(best.e.prenom))}</button>`);actions.push(`<button class="btn sm ${ecranOn()?"ok":"pri"}" data-go2="${f.id}|${best.e.id}">Partir avec ${esc(titleCase(best.e.prenom))}</button>`);}
         if(s.k==="visite"&&!f.attend)actions.push(`<button class="btn sm" data-wait="${f.id}|${sid}">Attendre ${esc(prenomOf(sid))}</button>`);
         if(!best&&s.k!=="visite")actions.push(`<button class="btn sm" data-arr="${f.id}">Voir les solutions</button>`);}}
     else{if(lateF){level=1;actions.push(`<button class="btn sm" data-fabs="${f.id}">Famille absente</button>`);}
@@ -834,7 +860,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   <div class="card dep" style="margin-bottom:16px"><div class="card-h"><h3>Prochains départs</h3><span class="small muted">${rows.length?`${rows.length} famille(s) entre ${fmt(now-60)} et ${fmt(now+20)}${alerts?` · <b style="color:var(--bad)">${alerts} à régler</b>`:" · tout est en ordre"}`:"aucun départ prévu dans les 20 prochaines minutes"}</span></div>
     ${rows.length?`<div class="deprows">${rows.map(r=>`<div class="deprow lv${r.level}"><span class="t">${esc(r.f.slot)}</span>
       <div class="dep-f"><b>${esc(r.f.nom)}</b> <span class="pill ${r.famCls}">${esc(r.famLab)}</span></div>
-      <div class="dep-s">${r.sid?`<span class="nm">${esc(fullName(S.eleves[r.sid]||{}))}</span>`:'<span class="muted">aucun élève</span>'} <span class="pill ${r.s.cls}">${esc(r.f.attend?"attendu : "+r.s.label:r.s.label)}</span></div>
+      <div class="dep-s">${r.sid?`<span class="nm">${esc(fullName(S.eleves[r.sid]||{}))}</span>`:'<span class="muted">aucun élève</span>'} <span class="pill ${r.s.cls}">${esc(r.f.attend?"attendu : "+r.s.label:r.s.label)}</span> ${r.sid?callPill(r.sid):""}</div>
       <div class="row dep-a">${r.actions.join("")}</div></div>`).join("")}</div>`:""}
   </div>
   <div class="live"><section>
@@ -845,7 +871,8 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
     ${shown.filter(f=>!(f.statut==="arrive"&&!f.eleve&&!q)).map(famCard).join("")||`<div class="empty"><b>${q?"Aucune famille trouvée":"Aucune famille sur ce créneau"}</b>${q?`Vérifie l'orthographe, ou c'est une famille non inscrite :<div style="margin-top:10px"><button class="btn pri" id="walkQ">Ajouter « ${esc(UI.liveQ.trim().toUpperCase())} » sans inscription</button></div>`:""}</div>`}
   </section>
   <aside class="card">
-    <div class="sec-t" style="margin-top:0">Libres maintenant (${freeNow.length})</div>
+    ${ecranCard()}
+    <div class="sec-t">Libres maintenant (${freeNow.length})</div>
     <div class="freebox">${freeGuides().map(({e,nx})=>`<div class="free"><b>${esc(fullName(e))}</b><span class="muted">${esc(e.classe)}${nx?` · prévu ${fmt(nx.t)} (${esc(nx.f.nom)})`:" · disponible"}</span></div>`).join("")||'<span class="muted small">Aucun élève libre pour le moment.</span>'}</div>
     <div class="sec-t">En visite (${Object.keys(iv).length})</div>
     ${Object.entries(iv).sort((a,b)=>tmin(a[1][0].hDepart)-tmin(b[1][0].hDepart)).map(([sid,fs])=>{const st=stuState(sid,iv);const next=famList().filter(f=>famActive(f)&&!f.eleve&&(f.attend===sid||f.elevePrevu===sid)).sort((a,b)=>tmin(a.slot)-tmin(b.slot))[0];
@@ -864,7 +891,7 @@ function vAccueil(v){const c=C(),now=nowMin(),slots=slotsAll();
   v.querySelectorAll("[data-fabs]").forEach(b=>b.onclick=()=>famAbsent(b.dataset.fabs));
   v.querySelectorAll("[data-go2]").forEach(b=>b.onclick=()=>{const [fid,sid]=b.dataset.go2.split("|");goVisit(fid,sid);});
   v.querySelectorAll("[data-wait]").forEach(b=>b.onclick=()=>{const [fid,sid]=b.dataset.wait.split("|");waitFor(fid,sid);});
-  v.querySelectorAll("[data-repl]").forEach(b=>b.onclick=()=>replacePlan(b.dataset.repl));
+  v.querySelectorAll("[data-repl]").forEach(b=>b.onclick=()=>replacePlan(b.dataset.repl));bindEcran(v);
   v.querySelectorAll("[data-famback]").forEach(b=>b.onclick=()=>backStudent(S.familles[b.dataset.famback].eleve));
   v.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>backStudent(b.dataset.back));
   v.querySelectorAll("[data-pres]").forEach(b=>b.onclick=()=>patch("eleves",b.dataset.pres,{presence:"present",arrivee:fmt(nowMin())}));
@@ -886,9 +913,9 @@ function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const 
   const alts=freeGuides(f.id).filter(x=>x.e.id!==planId);
   const late=tmin(f.slot)!=null?now-tmin(f.slot):0;
   const recent=Object.entries(iv).filter(([sid,fs])=>now-tmin(fs[0].hDepart)<=10&&fs.length<c.maxFamilles).map(([sid,fs])=>({sid,fs}));
-  const altBtn=(x,i)=>`<button class="btn" style="justify-content:space-between;text-align:left" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span>${i===0&&!x.nx?' <span class="pill ok">conseillé</span>':""}</span><span class="small">${x.nx?`<span class="pill warn">prévu à ${fmt(x.nx.t)} avec ${esc(x.nx.f.nom)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`;
+  const altBtn=(x,i)=>(ecranOn()?`<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm pri" data-calld="${x.e.id}" style="flex:none">Appeler</button>`:"")+`<button class="btn" style="justify-content:space-between;text-align:left;flex:1;min-width:0" data-go="${x.e.id}"><span><b>${esc(fullName(x.e))}</b> <span class="muted small">${esc(x.e.classe)}</span>${i===0&&!x.nx?' <span class="pill ok">conseillé</span>':""}</span><span class="small">${x.nx?`<span class="pill warn">prévu à ${fmt(x.nx.t)} avec ${esc(x.nx.f.nom)}</span>`:`<span class="muted">${x.done} visite(s) faite(s)</span>`}</span></button>`+(ecranOn()?"</div>":"");
   let planBlock="";
-  if(plan){if(ps.k==="libre")planBlock=`<div class="alert ok">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)}), présent et libre.<div style="margin-top:8px"><button class="btn ok lg" data-go="${plan.id}">Partir avec ${esc(prenomOf(plan.id))}</button></div></div>`;
+  if(plan){if(ps.k==="libre")planBlock=`<div class="alert ok">Élève prévu : <b>${esc(fullName(plan))}</b> (${esc(plan.classe)}), présent et libre. ${callPill(plan.id)}<div class="row" style="margin-top:8px">${ecranOn()?`<button class="btn pri lg" data-calld="${plan.id}">${callOf(plan.id)?"Rappeler":"Appeler"} ${esc(prenomOf(plan.id))} sur l'écran</button><button class="btn ok" data-go="${plan.id}">Déjà là : partir</button>`:`<button class="btn ok lg" data-go="${plan.id}">Partir avec ${esc(prenomOf(plan.id))}</button>`}</div></div>`;
     else if(ps.k==="visite")planBlock=`<div class="alert">Élève prévu : <b>${esc(fullName(plan))}</b> est encore en visite (${esc(ps.label)}).<div class="row" style="margin-top:8px"><button class="btn" data-waitd="${plan.id}">Attendre ${esc(prenomOf(plan.id))}</button><span class="small">ou choisis un autre élève ci-dessous.</span></div></div>`;
     else planBlock=`<div class="alert bad">Élève prévu : <b>${esc(fullName(plan))}</b> ${esc(ps.label)}. Choisis un autre élève ci-dessous.${ps.k==="attendu"?` <button class="btn sm" data-markabs="${plan.id}">Le marquer absent</button>`:""}</div>`;}
   openDlg(`Accueil : ${esc(f.nom)} ${esc(f.prenom||"")}`,`<div class="row"><span class="pill">${esc(f.slot||"sans créneau")}</span><span class="pill">${esc(f.nb||1)} pers.</span>${late>10?`<span class="pill warn">${late} min de retard</span>`:late<-10?`<span class="pill info">${-late} min d'avance</span>`:""}</div>
@@ -900,10 +927,11 @@ function arrivalDlg(fid){const f=S.familles[fid];const c=C(),now=nowMin();const 
   `<button class="btn" data-close>Fermer</button>${f.statut!=="arrive"?'<button class="btn" id="waitB">Arrivée, en attente d\'un élève</button>':""}`,d=>{
     d.querySelectorAll("[data-go]").forEach(b=>b.onclick=async()=>{d.close();await goVisit(f.id,b.dataset.go);});
     d.querySelectorAll("[data-waitd]").forEach(b=>b.onclick=async()=>{d.close();await waitFor(f.id,b.dataset.waitd);});
+    d.querySelectorAll("[data-calld]").forEach(b=>b.onclick=async()=>{d.close();await callStudent(f.id,b.dataset.calld);});
     d.querySelectorAll("[data-markabs]").forEach(b=>b.onclick=async()=>{d.close();await patch("eleves",b.dataset.markabs,{presence:"absent"});await repairFor(b.dataset.markabs,"absent");arrivalDlg(f.id);});
     d.querySelectorAll("[data-join]").forEach(b=>b.onclick=async()=>{d.close();const ref=fams.find(x=>x.statut==="visite"&&x.eleve===b.dataset.join);await patch("familles",f.id,{statut:"visite",eleve:b.dataset.join,attend:null,hArrivee:f.hArrivee||fmt(nowMin()),hDepart:ref.hDepart});toast(`${f.nom} rejoint la visite de ${fullName(S.eleves[b.dataset.join])}.`);});
     const w=d.querySelector("#waitB");if(w)w.onclick=()=>{d.close();patch("familles",f.id,{statut:"arrive",hArrivee:fmt(nowMin())});};});}
-async function goVisit(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());await patch("familles",fid,{statut:"visite",eleve:sid,attend:null,hArrivee:f.hArrivee||t,hDepart:t});
+async function goVisit(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());await clearCalls(a=>a.eleve===sid||a.famille===fid);await patch("familles",fid,{statut:"visite",eleve:sid,attend:null,hArrivee:f.hArrivee||t,hDepart:t});
   toast(`${f.nom} part en visite avec ${fullName(S.eleves[sid])}.`);await repairFor(sid,"busy");}
 /* cas 3 : la famille attend son élève, encore en visite ; il lui sera proposé dès son retour */
 async function waitFor(fid,sid){const f=S.familles[fid];await patch("familles",fid,{statut:"arrive",attend:sid,hArrivee:f.hArrivee||fmt(nowMin())});toast(`${f.nom} attend ${prenomOf(sid)} : la famille lui sera proposée dès son retour.`);}
@@ -912,7 +940,7 @@ async function replacePlan(fid){const f=S.familles[fid];const L=freeGuides(fid).
   if(!best)return toast("Aucun élève libre pour l'instant. La famille sera accueillie à son arrivée par le premier élève disponible.");
   const old=f.elevePrevu;await patch("familles",fid,{elevePrevu:best.e.id,attend:null});toast(`${titleCase(best.e.prenom)} accompagnera ${f.nom} (${f.slot})${old?` à la place de ${prenomOf(old)}`:""}.`,6000);}
 /* cas 1 : la famille ne vient pas → l'élève prévu est libéré, et on lui propose une famille qui attend */
-async function famAbsent(fid){const f=S.familles[fid];await patch("familles",fid,{statut:"absent",attend:null});const sid=f.elevePrevu;
+async function famAbsent(fid){const f=S.familles[fid];await clearCalls(a=>a.famille===fid);await patch("familles",fid,{statut:"absent",attend:null});const sid=f.elevePrevu;
   if(!sid||!S.eleves[sid])return toast(`${f.nom} marquée absente.`);const s=stuState(sid);
   if(s.k==="libre"&&waitingFams().length)return proposeFamily(sid,`${f.nom} ne vient pas : ${prenomOf(sid)} est libre.`);
   toast(`${f.nom} marquée absente. ${prenomOf(sid)} ${s.k==="libre"?"est libre pour une autre famille (en attente ou sans inscription).":"n'aura pas cette visite."}`,6000);}
@@ -940,8 +968,8 @@ function walkInDlg(prefNom){const now=nowMin();const free=freeGuides().filter(x=
 /* propose à un élève qui se libère les familles qui attendent, la sienne en premier */
 function proposeFamily(sid,msg){const L=waitingFams().sort((a,b)=>((b.attend===sid)-(a.attend===sid))||((b.elevePrevu===sid)-(a.elevePrevu===sid))||((tmin(a.hArrivee)??0)-(tmin(b.hArrivee)??0)));
   openDlg(esc(msg),`<p style="margin:0">${L.length===1?"Une famille attend un élève :":`${L.length} familles attendent un élève :`}</p>
-    <div style="display:grid;gap:6px">${L.map((f,i)=>`<button class="btn ${i===0?"pri":""}" style="justify-content:space-between;text-align:left" data-pg="${f.id}"><span><b>Partir avec ${esc(f.nom)}</b> <span class="small">${esc(f.slot||"")}</span></span><span class="small">${f.attend===sid?"l'attend":f.elevePrevu===sid?"prévue avec lui/elle":`attend depuis ${esc(f.hArrivee||"")}`}</span></button>`).join("")}</div>`,
-    `<button class="btn" data-close>Plus tard</button>`,d=>{d.querySelectorAll("[data-pg]").forEach(b=>b.onclick=async()=>{d.close();await goVisit(b.dataset.pg,sid);});});}
+    <div style="display:grid;gap:6px">${L.map((f,i)=>`<button class="btn ${i===0?"pri":""}" style="justify-content:space-between;text-align:left" data-pg="${f.id}"><span><b>${ecranOn()?`Appeler ${esc(prenomOf(sid))} pour ${esc(f.nom)}`:`Partir avec ${esc(f.nom)}`}</b> <span class="small">${esc(f.slot||"")}</span></span><span class="small">${f.attend===sid?"l'attend":f.elevePrevu===sid?"prévue avec lui/elle":`attend depuis ${esc(f.hArrivee||"")}`}</span></button>`).join("")}</div>`,
+    `<button class="btn" data-close>Plus tard</button>`,d=>{d.querySelectorAll("[data-pg]").forEach(b=>b.onclick=async()=>{d.close();if(ecranOn())await callStudent(b.dataset.pg,sid);else await goVisit(b.dataset.pg,sid);});});}
 
 /* ---------- Documents ---------- */
 function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").length;
@@ -987,7 +1015,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
   const cf=$("#codeF");if(cf)cf.onsubmit=async e=>{e.preventDefault();const n=$("#newCode").value.trim();if(!/^\d{4,8}$/.test(n))return toast("Le code doit faire 4 à 8 chiffres.");try{const j=await api("code",{newCode:n});SY.code=n;SY.cfg={salt:j.salt,hash:j.hash};persistSY();$("#newCode").value="";toast("Code changé : les autres appareils devront saisir le nouveau code.");}catch(er){toast("Changement impossible : "+er.message);}};
   $("#bkOut").onclick=()=>saveFile(`sauvegarde_portes_ouvertes_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1));
   $("#bkIn").onclick=()=>pickFile(".json",f=>{const r=new FileReader();r.onload=async()=>{try{const o=JSON.parse(r.result);if(!(await ask("Restaurer cette sauvegarde ? Les éléments portant le même identifiant seront remplacés.","Restaurer")))return;if(o.config)await putConfig(o.config);for(const c of COLLS)if(o[c])await putMany(c,Object.entries(o[c]));toast("Sauvegarde restaurée.");}catch(e){toast("Sauvegarde illisible.");}};r.readAsText(f);});
-  $("#rstLive").onclick=async()=>{if(!(await ask("Effacer tous les pointages élèves et statuts des familles du jour J ?","Remettre à zéro",true)))return;await putMany("eleves",Object.values(S.eleves).filter(e=>e.presence).map(e=>[e.id,{...e,presence:"",arrivee:""}]));await putMany("familles",famList().filter(f=>f.statut&&f.statut!=="inscrit"||f.eleve).map(f=>[f.id,{...f,statut:"inscrit",eleve:null,hArrivee:"",hDepart:"",hRetour:""}]));toast("Accueil remis à zéro.");};
+  $("#rstLive").onclick=async()=>{if(!(await ask("Effacer tous les pointages élèves et statuts des familles du jour J ?","Remettre à zéro",true)))return;await putMany("eleves",Object.values(S.eleves).filter(e=>e.presence).map(e=>[e.id,{...e,presence:"",arrivee:""}]));await putMany("familles",famList().filter(f=>f.statut&&f.statut!=="inscrit"||f.eleve).map(f=>[f.id,{...f,statut:"inscrit",eleve:null,hArrivee:"",hDepart:"",hRetour:""}]));await delMany("appels",Object.keys(S.appels));toast("Accueil remis à zéro.");};
   $("#rstFam").onclick=async()=>{if(!(await ask(`Supprimer les ${famList().length} familles inscrites ? (les élèves et ateliers restent)`,"Tout effacer",true)))return;await delMany("familles",Object.keys(S.familles));toast("Inscriptions effacées.");};
 }
 function qrCanvas(text,cell){const q=qrcode(0,"M");q.addData(text);q.make();const n=q.getModuleCount(),m=4,cv=document.createElement("canvas");cv.width=cv.height=(n+m*2)*cell;const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.fillStyle="#000";for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect((c+m)*cell,(r+m)*cell,cell,cell);return cv;}

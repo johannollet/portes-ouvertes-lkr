@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Salle des élèves · Portes ouvertes</title>
+<meta name="theme-color" content="#1d1530">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@500;600;700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Écran « salle des élèves » : grand affichage sombre lisible de loin, appels en bandeau, pointage tactile */
+:root{--bg:#120d1b;--panel:#1d1628;--panel2:#271e35;--ink:#f6f1fb;--muted:#a99fbc;--line:#3a2f4c;--accent:#ff5fa9;--violet:#a98cff;--ok:#4fd393;--warn:#ffbf5e;
+  --f-d:"League Spartan","Century Gothic",system-ui,sans-serif;--f-b:"Atkinson Hyperlegible",system-ui,sans-serif;--f-m:"JetBrains Mono",ui-monospace,monospace;color-scheme:dark}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 var(--f-b);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;gap:14px;align-items:center}.mark{border:3px solid var(--ink);padding:4px 8px 2px;font:800 15px/0.95 var(--f-d);text-transform:uppercase}.mark small{display:block;color:var(--accent);font-size:9px;letter-spacing:.3em}
+.brand h1{font:700 clamp(20px,2.4vw,32px) var(--f-d);margin:0}.brand p{margin:0;color:var(--muted)}
+.clock{font:700 clamp(28px,4vw,56px) var(--f-m)}
+.st{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;background:var(--ok)}.dot.err{background:#ff6b6b}
+/* appels */
+#calls{display:grid;gap:12px;margin:16px 0 0}
+.call{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;border-radius:18px;padding:18px 22px;background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 30%,var(--panel)),var(--panel2));border:3px solid var(--accent)}
+.call.new{animation:pulse 1s ease-in-out 6}
+@keyframes pulse{50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--accent) 35%,transparent)}}
+.call .who{font:800 clamp(30px,5vw,72px)/1 var(--f-d)}.call .who small{font-size:.45em;color:var(--muted);margin-left:10px}
+.call .msg{font-size:clamp(17px,1.8vw,26px);margin-top:6px}.call .msg b{color:var(--warn)}
+.call.vient{border-color:var(--ok);background:linear-gradient(100deg,color-mix(in srgb,var(--ok) 22%,var(--panel)),var(--panel2))}
+.big{border:0;border-radius:14px;padding:16px 26px;font:800 clamp(18px,2vw,28px) var(--f-d);background:var(--accent);color:#1a0b14}
+.big.ok{background:var(--ok);color:#06210f}.big.ghost{background:var(--panel2);color:var(--ink)}
+/* corps */
+.main{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(260px,1fr);gap:18px;padding:18px 0}
+@media (max-width:900px){.main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.panel h2{font:700 22px var(--f-d);margin:0 0 4px}.panel .sub{color:var(--muted);margin:0 0 12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.chip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:8px 16px;font-weight:700}.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+#q{width:100%;font:20px var(--f-b);padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.stu{border:2px solid var(--line);background:var(--panel2);border-radius:12px;padding:10px 12px;text-align:left;display:grid;gap:2px;min-height:72px}
+.stu b{font:700 19px var(--f-d)}.stu span{font-size:13px;color:var(--muted)}
+.stu.present{border-color:color-mix(in srgb,var(--ok) 60%,var(--line))}.stu.present span.s{color:var(--ok)}
+.stu.visite{border-color:color-mix(in srgb,var(--violet) 70%,var(--line))}.stu.visite span.s{color:var(--violet)}
+.side{display:grid;gap:14px;align-content:start}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi b{display:block;font:800 40px var(--f-d)}.kpi span{color:var(--muted);font-size:14px}
+.list{display:grid;gap:6px}.li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.li:last-child{border:0}.li .t{font-family:var(--f-m);font-weight:700}
+.muted{color:var(--muted)}
+/* fenêtres */
+.ov{position:fixed;inset:0;background:rgba(8,4,14,.75);display:grid;place-items:center;z-index:20;padding:16px}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px;width:min(560px,100%);display:grid;gap:16px;text-align:center}
+.sheet h3{font:800 clamp(28px,4vw,44px) var(--f-d);margin:0}.sheet p{margin:0;font-size:19px}
+.sheet .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.code{font:700 32px var(--f-m);text-align:center;letter-spacing:.3em;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);width:100%}
+.check{width:84px;height:84px;border-radius:50%;background:var(--ok);color:#06210f;font-size:46px;display:grid;place-items:center;margin:0 auto}
+@media (prefers-reduced-motion:reduce){.call.new{animation:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="mark"><small>Invitation</small>Portes<br>ouvertes</div><div><h1>Salle des élèves accompagnateurs</h1><p id="sub">Reste ici : ton prénom s'affichera quand ta famille arrivera.</p></div></div>
+  <div style="text-align:right"><div class="clock" id="clk">--h--</div><div class="st" id="st"><span class="dot"></span>Connexion…</div></div>
+</header>
+<section id="calls" aria-live="assertive"></section>
+<div class="main">
+  <section class="panel"><h2>Je me pointe</h2><p class="sub">Touche ton prénom quand tu arrives au collège, et à chaque retour de visite.</p>
+    <input id="q" type="search" placeholder="Tape les premières lettres de ton prénom…" autocomplete="off">
+    <div class="chips" id="cls"></div><div class="grid" id="grid"></div></section>
+  <aside class="side">
+    <div class="panel kpis"><div class="kpi"><b id="kSalle">0</b><span>dans la salle</span></div><div class="kpi"><b id="kVis">0</b><span>en visite</span></div></div>
+    <div class="panel"><h2>Prochaines visites</h2><p class="sub">Prépare-toi si ton prénom est dans la liste.</p><div class="list" id="next"></div></div>
+  </aside>
+</div>
+<div id="ov"></div>
+<script>
+/* Écran de la salle des élèves : ne charge qu'une vue réduite (prénoms, classes, appels) via /api/ecran. */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tc=s=>String(s||"").toLowerCase().replace(/(^|[\s'-])\S/g,m=>m.toUpperCase());
+const KEY="po-lkr-ecran";let CODE="";try{CODE=localStorage.getItem(KEY)||"";}catch(e){}
+let V={eleves:[],appels:[],prochaines:[]},ETAG="",CLS="all",Q="",seen=new Set(),first=true,audio=null,sound=false,busy=false;
+const api=async(op,extra)=>{const r=await fetch("/api/ecran",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,ecran:CODE,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok){const e=new Error(j.error||("Erreur "+r.status));e.status=r.status;throw e;}return j;};
+function tick(){const d=new Date();$("#clk").textContent=d.getHours()+"h"+String(d.getMinutes()).padStart(2,"0");}setInterval(tick,5000);tick();
+function chime(){if(!sound||!audio)return;try{const t0=audio.currentTime;[[880,0],[1175,.18],[1568,.36]].forEach(([f,dt])=>{const o=audio.createOscillator(),g=audio.createGain();o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0,t0+dt);g.gain.linearRampToValueAtTime(.35,t0+dt+.02);g.gain.exponentialRampToValueAtTime(.001,t0+dt+.5);o.connect(g).connect(audio.destination);o.start(t0+dt);o.stop(t0+dt+.55);});}catch(e){}}
+function sheet(html,after){const o=$("#ov");o.innerHTML=`<div class="ov"><div class="sheet">${html}</div></div>`;after&&after(o);}
+function closeSheet(){$("#ov").innerHTML="";}
+function askCode(msg){sheet(`<h3>Écran élèves</h3><p>Code de l'écran (donné par l'organisateur)</p><input class="code" id="cIn" inputmode="numeric" maxlength="8" type="password"><p class="muted" id="cMsg" style="font-size:15px">${esc(msg||"")}</p><div class="row"><button class="big" id="cOk">Valider</button></div>`,o=>{
+  const i=o.querySelector("#cIn");setTimeout(()=>i.focus(),50);const go=async()=>{CODE=i.value.trim();try{await api("login");try{localStorage.setItem(KEY,CODE);}catch(e){}closeSheet();start();}catch(e){o.querySelector("#cMsg").textContent=e.status===401?"Code incorrect.":"Connexion impossible.";}};
+  o.querySelector("#cOk").onclick=go;i.onkeydown=e=>{if(e.key==="Enter")go();};});}
+function startSheet(){sheet(`<h3>Démarrer l'écran</h3><p>Touche le bouton pour activer le son des appels et garder l'écran allumé.</p><div class="row"><button class="big" id="go">Démarrer</button><button class="big ghost" id="nos">Sans son</button></div>`,o=>{
+  o.querySelector("#go").onclick=async()=>{try{audio=new (window.AudioContext||window.webkitAudioContext)();await audio.resume();sound=true;chime();}catch(e){}
+    try{await navigator.wakeLock.request("screen");}catch(e){}try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch(e){}closeSheet();};
+  o.querySelector("#nos").onclick=()=>closeSheet();});}
+async function poll(){try{const j=await api("state",{etag:ETAG});$("#st").innerHTML='<span class="dot"></span>À jour';if(!j.same){ETAG=j.etag;V=j;draw();}}
+  catch(e){if(e.status===401){CODE="";try{localStorage.removeItem(KEY);}catch(_){}askCode("Le code de l'écran a changé.");return;}$("#st").innerHTML='<span class="dot err"></span>Hors ligne, nouvelle tentative…';}}
+function draw(){const L=V.appels||[];let fresh=false;
+  $("#calls").innerHTML=L.map(a=>{const nw=!seen.has(a.id+a.at);if(nw&&!first)fresh=true;return `<div class="call ${a.etat==="vient"?"vient":""} ${nw&&!first?"new":""}"><div><div class="who">${esc(tc(a.prenom))} ${esc(a.n)}.<small>${esc(a.classe)}</small></div>
+    <div class="msg">${a.etat==="vient"?"C'est noté, va vite à l'accueil !":`Ta famille <b>${esc(a.famille)}</b> est arrivée : viens à l'accueil.`}</div></div>${a.etat==="vient"?"":`<button class="big ok" data-ack="${esc(a.id)}">J'arrive</button>`}</div>`;}).join("");
+  L.forEach(a=>seen.add(a.id+a.at));if(fresh)chime();first=false;
+  document.querySelectorAll("[data-ack]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("ack",{id:b.dataset.ack});ETAG="";poll();}catch(e){b.disabled=false;}});
+  const el=V.eleves||[];const classes=[...new Set(el.map(e=>e.classe).filter(Boolean))].sort((a,b)=>b.charAt(0).localeCompare(a.charAt(0))||a.localeCompare(b));
+  $("#cls").innerHTML=[["all","Toutes"],...[...new Set(classes.map(c=>c[0]))].sort().reverse().map(n=>["n"+n,n+"e"]),...classes.map(c=>[c,c])].map(([k,l])=>`<button class="chip" data-c="${esc(k)}" aria-pressed="${CLS===k}">${esc(l)}</button>`).join("");
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{CLS=b.dataset.c;draw();});
+  const q=Q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const list=el.filter(e=>CLS==="all"||(CLS[0]==="n"&&CLS.length===2?e.classe[0]===CLS[1]:e.classe===CLS)).filter(e=>!q||e.prenom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").startsWith(q))
+    .sort((a,b)=>a.prenom.localeCompare(b.prenom,"fr"));
+  $("#grid").innerHTML=list.map(e=>{const s=e.visite?"en visite":e.presence==="present"?(e.prochaine?`présent · visite à ${e.prochaine}`:"présent"):e.presence==="absent"?"noté absent":"pas encore pointé";
+    return `<button class="stu ${e.visite?"visite":e.presence==="present"?"present":""}" data-id="${esc(e.id)}"><b>${esc(tc(e.prenom))} ${esc(e.n)}.</b><span>${esc(e.classe)}${e.atelier?" · atelier "+esc(e.atelier):""}</span><span class="s">${esc(s)}</span></button>`;}).join("")||'<p class="muted">Aucun prénom ne correspond.</p>';
+  document.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>pick(b.dataset.id));
+  $("#kSalle").textContent=el.filter(e=>e.presence==="present"&&!e.visite&&e.guide).length;$("#kVis").textContent=el.filter(e=>e.visite).length;
+  $("#next").innerHTML=(V.prochaines||[]).map(p=>`<div class="li"><span><span class="t">${esc(p.t)}</span> ${esc(tc(p.prenom))} ${esc(p.n)}.</span><span class="muted">${p.visite?"en visite":p.present?"dans la salle":"pas pointé"}</span></div>`).join("")||'<p class="muted">Aucune visite dans les 40 prochaines minutes.</p>';}
+function pick(id){const e=(V.eleves||[]).find(x=>x.id===id);if(!e)return;const nm=`${tc(e.prenom)} ${e.n}.`;
+  const act=e.visite?["retour","Je reviens de visite"]:e.presence==="present"?null:["arrivee","Je suis arrivé(e)"];
+  sheet(`<h3>${esc(nm)}</h3><p class="muted">${esc(e.classe)}</p>${act?`<p>Confirme :</p>`:`<p>Tu es déjà pointé(e). ${e.prochaine?`Ta prochaine visite est prévue vers <b>${esc(e.prochaine)}</b>.`:""} Reste dans la salle, ton prénom s'affichera ici.</p>`}
+    <div class="row">${act?`<button class="big ok" id="okA">${act[1]}</button>`:""}<button class="big ghost" id="noA">${act?"Ce n'est pas moi":"OK"}</button></div>`,o=>{
+    o.querySelector("#noA").onclick=closeSheet;const ok=o.querySelector("#okA");
+    if(ok)ok.onclick=async()=>{if(busy)return;busy=true;ok.disabled=true;try{await api("checkin",{id,kind:act[0]});sheet(`<div class="check">✓</div><h3>Merci ${esc(tc(e.prenom))} !</h3><p>${act[0]==="retour"?"Bon retour. ":""}Reste dans la salle : ton prénom s'affichera ici quand une famille t'attendra.</p>`);setTimeout(closeSheet,3500);$("#q").value="";Q="";ETAG="";poll();}
+      catch(er){sheet(`<h3>Oups</h3><p>${esc(er.message)}</p><div class="row"><button class="big ghost" id="noA">Fermer</button></div>`,o2=>o2.querySelector("#noA").onclick=closeSheet);}busy=false;};});}
+$("#q").oninput=e=>{Q=e.target.value.trim();draw();};
+let started=false;function start(){if(started)return;started=true;poll();setInterval(poll,2500);startSheet();}
+if(!CODE)askCode();else{api("login").then(start).catch(e=>askCode(e.status===401?"":"Connexion impossible, vérifie le réseau."));}
+</script>
+</body></html>

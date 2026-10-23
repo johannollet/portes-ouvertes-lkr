@@ -12,3 +12,6 @@
 /enquete*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
+/ecran*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
