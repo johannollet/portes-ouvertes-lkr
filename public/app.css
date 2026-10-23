@@ -142,7 +142,8 @@ dialog::backdrop{background:rgba(20,10,30,.45)}
 .seg button{font:600 13px var(--f-body);border:0;background:var(--card);color:var(--muted);padding:6px 10px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .ie{font:700 12px var(--f-body);border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:6px;padding:3px 6px;cursor:pointer}
-.ie.set{color:var(--ink);border-color:var(--ink)}
+.ie.set{color:var(--paper);background:var(--ink);border-color:var(--ink)}
+.ie.auto{color:var(--ink);border-style:dashed;border-color:var(--ink)}
 #lock{position:fixed;inset:0;z-index:60;background:var(--paper);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
 .lockbox{width:min(380px,100%);display:grid;gap:14px;text-align:center;justify-items:center}
 .lockbox input{font:700 28px var(--f-mono);text-align:center;letter-spacing:.3em;width:100%;padding:12px}
