@@ -86,14 +86,14 @@ function applyRemote(d){const prevIV=typeof inVisitMap==="function"?Object.keys(
 const strip=d=>{const x={...d};delete x.id;return x;};
 async function put(c,id,data){S[c][id]={...strip(data),id};schedule();saveLocal();}
 async function putMany(c,entries){entries.forEach(([id,d])=>S[c][id]={...strip(d),id});schedule();saveLocal();}
-async function delMany(c,ids){ids.forEach(id=>delete S[c][id]);schedule();saveLocal();}
+async function delMany(c,ids){if(c==="familles")inscForget(ids.map(id=>S.familles[id]).filter(f=>f&&f.inscId));ids.forEach(id=>delete S[c][id]);schedule();saveLocal();}
 const del=(c,id)=>delMany(c,[id]);
 async function putConfig(p){S.config={...S.config,...p};schedule();saveLocal();}
 function patch(c,id,p){const cur=S[c][id];if(!cur)return;return put(c,id,{...cur,...p});}
 
 /* ateliers et rétroplanning proposés au premier lancement */
 const SEED_ATELIERS=[["Accueil","Administration","Entrée"],["Association des parents d'élèves (APE)","Autres","Salle multi"],["EPS et UNSS (atelier escalade)","Sport","Salle multi"],["Les clubs du collège","Club et CDI","Foyer"],["Secrétariat, intendance, vie scolaire, AESH","Administration","Salle multi"],["Visite du restaurant scolaire","Autres","Restaurant scolaire"],["Les langues vivantes","Langue","Info 2"],["Les mathématiques « Kahoot »","Mathématiques","Salle 16"],["Les lettres et le latin","Littéraire","CDI"],["Les besoins éducatifs particuliers","Autres","Salles 17 et 19"],["Les sciences","Sciences","Sciences 3"],["Les arts","Artistique","Arts plastiques"],["Histoire-géographie et outils numériques","Littéraire","Salle 14"],["Chorale","Artistique","Salle musique"]];
-const SEED_TACHES=[["Créer le sondage d'inscription Evento","",true],["Diffuser les flyers avec QR code dans les écoles primaires","2026-10-23"],["Envoyer la fiche atelier aux collègues","2026-10-23"],["Récupérer toutes les fiches ateliers et réserver les salles","2026-11-04"],["Finaliser la liste des élèves volontaires","2026-11-04"],["Mettre à jour le feuillet d'accueil des parents (salles, ateliers)","2026-11-06"],["Clôturer les inscriptions et importer l'export Evento","2026-11-09"],["Générer le planning et distribuer les convocations élèves","2026-11-10"],["Imprimer les feuillets d'accueil (1 par famille)","2026-11-12"],["Imprimer la liste d'accueil papier de secours et le planning élèves","2026-11-13"],["Préparer la table d'accueil (tablette/PC, affiche QR, feuillets)","2026-11-13"]];
+const SEED_TACHES=[["Ouvrir l'inscription en ligne des familles (onglet Inscriptions)","2026-10-23"],["Diffuser les flyers avec QR code dans les écoles primaires","2026-10-23"],["Envoyer la fiche atelier aux collègues","2026-10-23"],["Récupérer toutes les fiches ateliers et réserver les salles","2026-11-04"],["Finaliser la liste des élèves volontaires","2026-11-04"],["Mettre à jour le feuillet d'accueil des parents (salles, ateliers)","2026-11-06"],["Clôturer les inscriptions en ligne des familles","2026-11-09"],["Générer le planning et distribuer les convocations élèves","2026-11-10"],["Imprimer les feuillets d'accueil (1 par famille)","2026-11-12"],["Imprimer la liste d'accueil papier de secours et le planning élèves","2026-11-13"],["Préparer la table d'accueil (tablette/PC, affiche QR, feuillets)","2026-11-13"]];
 function seedIfEmpty(){if(Object.keys(S.ateliers).length||Object.keys(S.taches).length||Object.keys(S.eleves).length)return;
   SEED_ATELIERS.forEach(([nom,pole,salle],i)=>S.ateliers["a"+String(i).padStart(2,"0")]={id:"a"+String(i).padStart(2,"0"),nom,pole,salle,prof:"",materiel:"",horaires:"Libre d'accès",description:"",eleves:"",ficheRecue:false,ordre:i+1});
   SEED_TACHES.forEach(([label,echeance,fait],i)=>S.taches["t"+String(i).padStart(2,"0")]={id:"t"+String(i).padStart(2,"0"),label,echeance,fait:!!fait,ordre:i+1});writeLocal();}
@@ -142,7 +142,7 @@ function initStore(){loadLocal();seedIfEmpty();migrate();LOADED=true;MODE=ONLINE
   $("#sync").onclick=()=>syncNow();$("#lockBtn").onclick=()=>{SY.unlocked=false;persistSY();showLock();};
   if(!ONLINE){setSync("local");return;}
   setInterval(()=>{if(document.visibilityState==="visible")syncNow();},5000);
-  setInterval(()=>{if(document.visibilityState!=="visible")return;if(["ateliers","feuillet","prep"].includes(UI.tab))fetchFiches(false);if(UI.tab==="enquete")fetchResults(false);if(UI.tab==="eleves")fetchVol(false);publishPublic();},30000);
+  setInterval(()=>{if(document.visibilityState!=="visible")return;if(["ateliers","feuillet","prep"].includes(UI.tab))fetchFiches(false);if(UI.tab==="enquete")fetchResults(false);if(UI.tab==="eleves")fetchVol(false);if(["inscr","plan","prep","accueil"].includes(UI.tab))fetchInsc(false);publishPublic();},30000);
   window.addEventListener("online",syncNow);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncNow();});
   if(!SY.unlocked||!SY.code){showLock();return;}$("#lockBtn").hidden=false;syncNow();setTimeout(()=>{fetchFiches(true);publishPublic();},2500);}
 let rT=null;function schedule(){if(rT)return;rT=requestAnimationFrame(()=>{rT=null;render();});}
@@ -257,7 +257,7 @@ function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=O
   <div class="grid g2" style="margin-top:16px">
     <div class="card"><div class="card-h"><h3>Familles par créneau</h3><span class="small muted">hachuré = sans élève attribué</span></div>
       ${fams.length?`<div class="slots-chart">${slots.map(s=>{const fs=famBySlot(s).filter(f=>f.statut!=="absent");const miss=fs.filter(f=>!f.eleve&&!f.elevePrevu).length;const h=fs.length/maxF*120;const hm=miss/maxF*120;return `<div class="sc" title="${s} : ${fs.length} familles"><span class="v">${fs.length||""}</span><div class="b" style="height:${h-hm}px"></div>${miss?`<div class="b miss" style="height:${hm}px;border-radius:0"></div>`:""}<span class="x">${s}</span></div>`;}).join("")}</div>`
-      :`<div class="empty"><b>Aucune inscription importée</b>Va dans <em>Inscriptions</em> et importe l'export Evento.</div>`}
+      :`<div class="empty"><b>Aucune inscription importée</b>Ouvre l'inscription en ligne dans <em>Inscriptions</em> : les familles arrivent ici automatiquement.</div>`}
     </div>
     <div class="card"><div class="card-h"><h3>Rétroplanning</h3><span class="pill ${tDone===todos.length&&todos.length?'ok':''}">${tDone}/${todos.length} fait</span></div>
       <div id="todos">${todos.map(t=>`<div class="todo ${t.fait?'done':''}"><input type="checkbox" data-todo="${t.id}" ${t.fait?"checked":""} aria-label="Fait"><span class="lbl">${esc(t.label)}</span>${t.echeance?`<span class="pill ${!t.fait&&t.echeance<new Date().toISOString().slice(0,10)?'bad':''}">${esc(fmtDate(t.echeance))}</span>`:""}<button class="btn ghost sm" data-deltodo="${t.id}" aria-label="Supprimer">✕</button></div>`).join("")||`<p class="muted">Aucune tâche.</p>`}</div>
@@ -409,7 +409,7 @@ function setF(p,live){S.config.feuillet={...(S.config.feuillet||{}),...p};if(liv
 const lines=t=>String(t||"").split(/\n/).map(x=>x.trim()).filter(Boolean);
 function feuilletAteliers(F){const at=atSorted().filter(a=>a.afficher!==false);const groups=F.etages.map(e=>[e,at.filter(a=>a.etage===e)]);const rest=at.filter(a=>!F.etages.includes(a.etage));if(rest.length)groups.push(["Autres lieux",rest]);return groups.filter(g=>g[1].length);}
 function feuilletHTML(F){const fsz=(10*(+F.taille||100)/100).toFixed(2);
-  const qrUrl=F.qr==="enquete"?enqueteLink():F.qr==="evento"?C().eventoUrl:F.qr==="site"&&F.site?(/^https?:/.test(F.site)?F.site:"https://"+F.site):"";let qrImg="";
+  const qrUrl=F.qr==="enquete"?enqueteLink():F.qr==="evento"?inscUrl():F.qr==="site"&&F.site?(/^https?:/.test(F.site)?F.site:"https://"+F.site):"";let qrImg="";
   if(qrUrl&&typeof qrcode!=="undefined"){try{qrImg=qrCanvas(qrUrl,6).toDataURL("image/png");}catch(e){}}
   const groups=feuilletAteliers(F);const usedPoles=[...new Set(groups.flatMap(g=>g[1].map(a=>a.pole)).filter(Boolean))];
   const para=t=>String(t||"").split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,"<br>")}</p>`).join("");
@@ -464,7 +464,7 @@ function vFeuillet(v){fetchFiches(false);const F=FD();const at=atSorted();
       <div class="row"><button class="btn sm" id="goAt">Gérer les ateliers</button><button class="btn sm" id="addAt2">+ Ajouter un atelier</button></div></div></details>
     <details class="card"><summary><h3>Infos pratiques (dos)</h3></summary><div class="dgrid">
       ${T("f_adresse","Adresse",F.adresse)}${T("f_tel","Téléphone",F.tel)}${T("f_mail","E-mail",F.mail)}${T("f_site","Site internet",F.site)}
-      <label class="f">QR code<select id="f_qr"><option value="site" ${F.qr==="site"?"selected":""}>Site du collège</option><option value="enquete" ${F.qr==="enquete"?"selected":""}>Enquête de satisfaction</option><option value="evento" ${F.qr==="evento"?"selected":""}>Inscription Evento</option><option value="none" ${F.qr==="none"?"selected":""}>Aucun</option></select></label>
+      <label class="f">QR code<select id="f_qr"><option value="site" ${F.qr==="site"?"selected":""}>Site du collège</option><option value="enquete" ${F.qr==="enquete"?"selected":""}>Enquête de satisfaction</option><option value="evento" ${F.qr==="evento"?"selected":""}>Inscription des familles</option><option value="none" ${F.qr==="none"?"selected":""}>Aucun</option></select></label>
       ${T("f_qrLabel","Texte sous le QR code",F.qrLabel)}${B("notes","Espace « Mes notes » pour les parents")}${T("f_noteDos","Message de fin",F.noteDos,2)}</div></details>
     <div class="row"><button class="btn sm ghost" id="fReset" style="color:var(--bad)">Revenir aux textes d'origine</button></div>
    </div>
@@ -508,7 +508,7 @@ const FACE_L=["😞 Déçu","🙁 Bof","😐 Correct","🙂 Bien","😍 Super"];
 function EQ(){const e=S.config.enquete;return e&&Array.isArray(e.questions)?JSON.parse(JSON.stringify(e)):JSON.parse(JSON.stringify(DEFAULT_ENQUETE));}
 let eqT=null;function setEQ(e,rerender){S.config.enquete=e;clearTimeout(eqT);eqT=setTimeout(()=>{saveLocal();publishPublic();},700);if(rerender)schedule();}
 const atelierNames=()=>atSorted().filter(a=>a.afficher!==false).map(a=>a.nom).filter(Boolean);
-function publicPayload(){const c=C(),e=EQ(),vc=VC();return {vol:{ouvert:vc.ouvert,classes:vc.classes,ateliers:atelierNames(),dateLimite:vc.dateLimite,message:vc.message},info:{college:c.college,ville:c.ville,dateTexte:c.dateTexte,horaires:c.horaires,responsable:c.responsable,accent:FD().accent},
+function publicPayload(){const c=C(),e=EQ(),vc=VC(),ic=IC();return {insc:{ouvert:ic.ouvert,intro:ic.intro,slots:c.slots,places:ic.places,niveaux:ic.niveaux,ecoles:ic.ecoles,dateLimite:ic.dateLimite,confirmation:ic.confirmation},vol:{ouvert:vc.ouvert,classes:vc.classes,ateliers:atelierNames(),dateLimite:vc.dateLimite,message:vc.message},info:{college:c.college,ville:c.ville,dateTexte:c.dateTexte,horaires:c.horaires,responsable:c.responsable,accent:FD().accent},
   enquete:{ouverte:e.ouverte!==false,titre:e.titre,intro:e.intro,merci:e.merci,questions:e.questions.map(q=>({id:q.id,type:q.type==="ateliers"?"multi":q.type,label:q.label,obligatoire:!!q.obligatoire,options:q.type==="ateliers"?atelierNames():(q.options||[])}))}};}
 let PUB={last:"",busy:false,err:"",at:null};
 async function publishPublic(){if(!ONLINE||!SY.unlocked||PUB.busy)return;const p=publicPayload();const k=JSON.stringify(p);if(k===PUB.last)return;PUB.busy=true;
@@ -682,6 +682,64 @@ function bindVol(v){fetchVol(false);const dt=$("#volDet");if(dt)dt.addEventListe
   v.querySelectorAll("[data-vacc]").forEach(b=>b.onclick=()=>{const r=(VOLR.list||[]).find(x=>x.id===b.dataset.vacc);if(r)acceptVol(r);});
   v.querySelectorAll("[data-vref]").forEach(b=>b.onclick=()=>{const r=(VOLR.list||[]).find(x=>x.id===b.dataset.vref);if(r)refuseVol(r);});
   const all=$("#volAll");if(all)all.onclick=async()=>{const P=volPending();if(!(await ask(`Accepter les ${P.length} inscriptions ?`,"Tout accepter")))return;for(const r of P)await acceptVol(r,true);toast(`${P.length} élève(s) ajouté(s) ou mis à jour.`);};}
+/* ============ Inscription en ligne des familles (remplace Evento) ============ */
+const inscLink=()=>location.origin+"/inscription";
+const INSC_INTRO="Le collège Lili Keller Rosenberg organise le samedi 14 novembre une matinée portes ouvertes afin de vous faire découvrir le collège. Veuillez vous inscrire en choisissant 1 unique créneau parmi les propositions suivantes.";
+const INSC_NIV=["CM2","CM1","6e","5e","4e","3e","Autre"];
+function IC(){const i=S.config.insc||{};return {ouvert:!!i.ouvert,intro:i.intro??INSC_INTRO,places:Math.max(0,parseInt(i.places)||0),niveaux:Array.isArray(i.niveaux)&&i.niveaux.length?i.niveaux:INSC_NIV,ecoles:Array.isArray(i.ecoles)?i.ecoles:[],dateLimite:i.dateLimite||"",
+  confirmation:i.confirmation??"Merci ! Présentez-vous à l'accueil du collège quelques minutes avant votre créneau.",qr:i.qr||"app"};}
+function setIC(p,rerender=true){S.config.insc={...IC(),...p};saveLocal();publishPublic();if(rerender)schedule();else{clearTimeout(rT2);rT2=setTimeout(schedule,1500);}}
+let rT2=null;
+const inscUrl=()=>IC().qr==="evento"?C().eventoUrl:inscLink();
+let INSR={list:null,busy:false,err:"",at:null,last:0};
+const inscApi=async(op,extra)=>{const r=await fetch("/api/inscription",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,code:SY.code,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}if(!r.ok)throw new Error(j.error||("Erreur "+r.status));return j;};
+async function fetchInsc(force){if(!ONLINE||!SY.unlocked||INSR.busy)return;if(!force&&Date.now()-INSR.last<20000)return;
+  INSR.busy=true;INSR.last=Date.now();try{const j=await inscApi("list");INSR.list=j.inscriptions||[];INSR.err="";INSR.at=fmt(nowMin());await mergeInsc();}
+  catch(e){INSR.err=e.message||"Récupération impossible";}finally{INSR.busy=false;if(["inscr","plan","prep"].includes(UI.tab))schedule();}}
+/* chaque inscription en ligne devient une famille « w_<id> » ; une modification met à jour la famille, une annulation la retire */
+async function mergeInsc(){const ign=S.config.inscIgn||{},up=[],rm=[];let nN=0,nM=0,nA=0;
+  for(const r of INSR.list||[]){const id="w_"+r.id,f=S.familles[id],d=r.data||{};if(ign[r.id])continue;
+    if(r.annule){if(f&&(!f.statut||f.statut==="inscrit")&&!f.eleve){rm.push(id);nA++;}continue;}
+    if(f&&f.inscAt===r.updatedAt)continue;
+    const base={nom:String(d.nom||"").toUpperCase(),prenom:titleCase(d.prenom),nb:+d.nb||1,email:d.email||"",slot:d.slot||"",ecole:d.ecole||"",niveau:d.niveau||"",
+      infos:[d.niveau,d.ecole].filter(Boolean).join(" · ")+(d.message?` · « ${d.message} »`:""),source:"en ligne",inscId:r.id,inscAt:r.updatedAt};
+    if(!f){up.push([id,{tel:"",statut:"inscrit",elevePrevu:null,...base}]);nN++;}
+    else{const nf={...f,...base};if(f.slot!==base.slot&&!f.eleve&&!f.fige)nf.elevePrevu=null;up.push([id,nf]);nM++;}}
+  if(rm.length){rm.forEach(id=>delete S.familles[id]);schedule();saveLocal();}
+  if(up.length)await putMany("familles",up);
+  const t=[nN&&`${nN} nouvelle(s) inscription(s)`,nM&&`${nM} modifiée(s)`,nA&&`${nA} annulée(s)`].filter(Boolean);
+  if(t.length&&INSR.seen)toast("Inscriptions en ligne : "+t.join(", ")+".",5000);INSR.seen=true;}
+/* famille supprimée par l'organisateur : on supprime aussi l'inscription en ligne (la place se libère) */
+function inscForget(fams){if(!fams.length)return;const ig={...(S.config.inscIgn||{})};fams.forEach(f=>ig[f.inscId]=1);S.config.inscIgn=ig;
+  if(ONLINE&&SY.unlocked)inscApi("delete",{ids:fams.map(f=>f.inscId)}).then(()=>{INSR.list=(INSR.list||[]).filter(r=>!ig[r.id]);}).catch(()=>{});}
+const inscCount=s=>famList().filter(f=>f.source==="en ligne"&&f.slot===s).length;
+function inscCard(){const ic=IC(),slots=slotsAll(),nOn=famList().filter(f=>f.source==="en ligne").length;
+  return `<details class="card" id="inscDet" style="margin-bottom:14px" ${(UI.inscOpen??true)?"open":""}><summary style="cursor:pointer;list-style:none"><div class="card-h" style="margin:0"><h3>Inscription en ligne des familles</h3><span class="row small">${ic.ouvert?'<span class="pill ok">ouverte</span>':'<span class="pill">fermée</span>'}<span class="muted">${nOn} famille(s) inscrite(s) en ligne</span></span></div></summary>
+  <div style="display:grid;gap:12px;margin-top:12px">
+    <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:nowrap"><div class="qr" id="inscQr" style="padding:6px;flex:none"></div><div style="display:grid;gap:8px;min-width:0;flex:1">
+      <label class="row small"><input type="checkbox" id="inscOn" ${ic.ouvert?"checked":""}> Inscriptions ouvertes aux familles</label>
+      <label class="f">Lien pour les familles (flyers, mail aux écoles, site du collège)<input type="text" readonly value="${esc(inscLink())}"></label>
+      <div class="row"><button class="btn sm pri" id="inscMsg">Copier le message pour les écoles</button><button class="btn sm" id="inscCopy">Copier le lien</button><a class="btn sm" href="inscription.html" target="_blank" rel="noopener">Voir la page ↗</a><button class="btn sm" id="inscRef" ${INSR.busy?"disabled":""}>Actualiser</button></div>
+      <p class="small muted" style="margin:0">Chaque inscription arrive automatiquement dans la liste ci-dessous (repère <span class="pill ok">en ligne</span>). Une famille qui change de créneau ou annule est mise à jour toute seule. ${INSR.err?`<span style="color:var(--bad)">${esc(INSR.err)}</span>`:INSR.at?`Vérifié à ${INSR.at}.`:""}</p></div></div>
+    <div class="slotfill">${slots.map(s=>{const n=inscCount(s),p=ic.places;const pc=p?Math.min(100,Math.round(n/p*100)):0;return `<div class="sf ${p&&n>=p?"full":""}"><b>${esc(s)}</b><span>${n}${p?" / "+p:""}</span>${p?`<i style="width:${pc}%"></i>`:""}</div>`;}).join("")}</div>
+    <details><summary class="small muted" style="cursor:pointer">Réglages : texte d'accueil, places par créneau, niveaux, écoles, message de confirmation</summary><div style="display:grid;gap:10px;margin-top:8px">
+      <label class="f">Texte d'introduction<textarea id="inscIntro" rows="3">${esc(ic.intro)}</textarea></label>
+      <div class="fgrid"><label class="f">Places par créneau (0 = illimité)<input type="number" id="inscPl" min="0" max="200" value="${ic.places}"></label><label class="f">Date limite affichée<input type="text" id="inscLim" value="${esc(ic.dateLimite)}" placeholder="ex. vendredi 6 novembre"></label>
+      <label class="f">Niveaux de classe proposés (virgules)<input type="text" id="inscNiv" value="${esc(ic.niveaux.join(", "))}"></label></div>
+      <label class="f">Écoles suggérées (virgules, facultatif : la famille peut taper une autre école)<input type="text" id="inscEc" value="${esc(ic.ecoles.join(", "))}" placeholder="ex. École Jean Macé, École Lamartine"></label>
+      <label class="f">Message affiché après l'inscription<input type="text" id="inscConf" value="${esc(ic.confirmation)}"></label>
+      <p class="small muted" style="margin:0">Les créneaux proposés sont ceux des réglages (onglet Documents). Les places ne comptent que les inscriptions en ligne, pas les familles ajoutées à la main. Aucun e-mail automatique n'est envoyé : la page de confirmation donne à la famille un lien pour modifier ou annuler.</p>
+    </div></details>
+    <details><summary class="small muted" style="cursor:pointer">Evento (ancien système) : importer un export</summary><div class="row" style="margin-top:8px"><a class="btn sm" href="${esc(C().eventoUrl)}" target="_blank" rel="noopener">Ouvrir Evento ↗</a><button class="btn sm" id="impEv">Importer l'export (Excel/CSV)</button><button class="btn sm" id="pasteEv">Coller depuis Evento</button></div></details>
+  </div></details>`;}
+function bindInsc(v){fetchInsc(false);const dt=$("#inscDet");if(dt)dt.addEventListener("toggle",()=>{UI.inscOpen=dt.open;});
+  const qb=$("#inscQr");if(qb&&typeof qrcode!=="undefined"){try{const cv=qrCanvas(inscLink(),3);cv.style.width="96px";cv.style.height="96px";qb.appendChild(cv);}catch(e){}}else if(qb)qb.hidden=true;
+  $("#inscOn").onchange=e=>{setIC({ouvert:e.target.checked});toast(e.target.checked?"Inscriptions des familles ouvertes.":"Inscriptions des familles fermées.");};
+  $("#inscIntro").onchange=e=>setIC({intro:e.target.value.trim()},false);$("#inscPl").onchange=e=>setIC({places:Math.max(0,parseInt(e.target.value)||0)});$("#inscLim").onchange=e=>setIC({dateLimite:e.target.value.trim()},false);
+  $("#inscNiv").onchange=e=>setIC({niveaux:e.target.value.split(/[,;]+/).map(x=>x.trim()).filter(Boolean)},false);$("#inscEc").onchange=e=>setIC({ecoles:e.target.value.split(/[,;]+/).map(x=>x.trim()).filter(Boolean)},false);$("#inscConf").onchange=e=>setIC({confirmation:e.target.value.trim()},false);
+  $("#inscRef").onclick=()=>fetchInsc(true);
+  $("#inscCopy").onclick=()=>navigator.clipboard.writeText(inscLink()).then(()=>toast("Lien copié."),()=>toast("Copie impossible."));
+  $("#inscMsg").onclick=()=>{const c=C(),ic=IC();const t=`Portes ouvertes du ${c.college} - ${c.dateTexte} (${c.horaires})\n\nLe collège ouvre ses portes aux futurs élèves et à leurs familles : visite guidée par nos élèves et ateliers. Inscription obligatoire${ic.dateLimite?" avant le "+ic.dateLimite:""}, en choisissant votre créneau ici :\n${inscLink()}\n\nAu plaisir de vous accueillir,\n${c.responsable}`;navigator.clipboard.writeText(t).then(()=>toast("Message copié : colle-le dans ton mail aux écoles."),()=>toast("Copie impossible."));};}
 /* ---------- Inscriptions ---------- */
 function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
   if(q)fams=fams.filter(f=>norm(`${f.nom} ${f.prenom} ${f.email} ${f.tel} ${f.infos}`).includes(q));
@@ -689,19 +747,20 @@ function vInscr(v){const slots=slotsAll(),q=norm(UI.q);let fams=famList();
   const groups=(q||UI.slot==="all")?slots.map(s=>[s,fams.filter(f=>f.slot===s)]).filter(g=>g[1].length):[[UI.slot,fams]];
   const noSlot=fams.filter(f=>!f.slot);if(noSlot.length)groups.push(["Sans créneau",noSlot]);
   const all=famList();
-  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Inscriptions</h2><p class="lead" style="margin:0">${all.length} familles · ${pers(all)} personnes. Importe l'export Evento autant de fois que nécessaire : les familles déjà présentes sont mises à jour, pas dupliquées.</p></div>
-    <div class="row"><a class="btn" href="${esc(C().eventoUrl)}" target="_blank" rel="noopener">Ouvrir Evento ↗</a><button class="btn" id="impEv">Importer l'export (Excel/CSV)</button><button class="btn" id="pasteEv">Coller depuis Evento</button><button class="btn pri" id="addFam">+ Famille</button></div></div>
+  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Inscriptions</h2><p class="lead" style="margin:0">${all.length} familles · ${pers(all)} personnes. Les familles s'inscrivent en ligne et arrivent ici automatiquement ; tu peux aussi en ajouter à la main.</p></div>
+    <div class="row"><button class="btn pri" id="addFam">+ Famille</button></div></div>
+  ${ONLINE?inscCard():""}
   <input type="search" class="big" id="qFam" placeholder="Rechercher une famille par nom, prénom, e-mail… (tous créneaux)" value="${esc(UI.q)}" autocomplete="off">
   <div class="chips" style="margin:12px 0 14px"><button class="chip" aria-pressed="${UI.slot==="all"}" data-slot="all">Tous <span class="c">${all.length}</span></button>${slots.map(s=>`<button class="chip" aria-pressed="${UI.slot===s}" data-slot="${s}">${s} <span class="c">${famBySlot(s).length}</span></button>`).join("")}</div>
   ${all.length?`<div class="tbl-wrap"><table><thead><tr><th>Famille</th><th>Pers.</th><th>Contact</th><th>Informations</th><th>Élève</th><th>Statut</th><th></th></tr></thead><tbody>
-  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':f.source==="sur place"?' <span class="pill acc">sur place</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'} ${figePill(f)}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
-  </tbody></table></div>`:`<div class="empty"><b>Pas encore d'inscriptions ici</b>Dans Evento, ouvre les résultats du sondage, puis <em>Exporter</em> (Excel ou CSV) et importe le fichier avec le bouton ci-dessus.<br>Tu peux aussi sélectionner le tableau des réponses, le copier et utiliser « Coller depuis Evento ».</div>`}`;
+  ${groups.map(([s,fs])=>`<tr class="slot-h"><td colspan="7">${esc(s)} <span class="small muted" style="font-family:var(--f-body);font-weight:400">· ${fs.length} famille${fs.length>1?"s":""}, ${pers(fs)} pers.${tmin(s)!=null?" · visite jusqu'à "+fmt(tmin(s)+C().dureeVisite):""}</span></td></tr>`+fs.map(f=>`<tr><td class="name">${esc(f.nom)} ${esc(f.prenom||"")}${f.source==="manuel"?' <span class="pill">ajout manuel</span>':f.source==="sur place"?' <span class="pill acc">sur place</span>':f.source==="en ligne"?' <span class="pill ok">en ligne</span>':""}</td><td class="t">${esc(f.nb||1)}</td><td class="small">${esc(f.email||"")}${f.tel?"<br>"+esc(f.tel):""}</td><td class="small">${esc(f.infos||"")}</td><td>${f.eleve?stuLabel(f.eleve):f.elevePrevu?stuLabel(f.elevePrevu):'<span class="muted">—</span>'} ${figePill(f)}</td><td>${stPill(f)}</td><td><button class="btn ghost sm" data-editfam="${f.id}">Modifier</button></td></tr>`).join("")).join("")||`<tr><td colspan="7" class="muted">Aucune famille ne correspond.</td></tr>`}
+  </tbody></table></div>`:`<div class="empty"><b>Pas encore d'inscriptions ici</b>Ouvre l'inscription en ligne ci-dessus et diffuse le lien ou le QR code : chaque famille inscrite apparaîtra ici automatiquement.</div>`}`;
   const qi=$("#qFam");qi.oninput=()=>{UI.q=qi.value;render();};
   v.querySelectorAll("[data-slot]").forEach(b=>b.onclick=()=>{UI.slot=b.dataset.slot;UI.q="";render();});
   v.querySelectorAll("[data-editfam]").forEach(b=>b.onclick=()=>editFam(b.dataset.editfam));
   $("#addFam").onclick=()=>editFam(null);
-  $("#impEv").onclick=()=>pickFile(".xlsx,.xls,.csv,.ods,.txt",async f=>{try{const rows=await readRows(f);previewEvento(rows);}catch(e){toast("Fichier illisible : "+e.message);}});
-  $("#pasteEv").onclick=()=>openDlg("Coller les réponses Evento",`<p class="small muted" style="margin:0">Dans Evento, sélectionne le tableau des réponses (noms + créneaux), copie-le (Ctrl+C) puis colle-le ici (Ctrl+V).</p><textarea id="pasteT" placeholder="Colle ici…"></textarea>`,`<button class="btn" data-close>Annuler</button><button class="btn pri" id="pasteOk">Analyser</button>`,d=>{d.querySelector("#pasteOk").onclick=()=>{const t=d.querySelector("#pasteT").value;if(!t.trim())return;const rows=t.split(/\r?\n/).map(l=>l.split(l.includes("\t")?"\t":l.includes(";")?";":","));previewEvento(rows);};});
+  if(ONLINE)bindInsc(v);const ie=$("#impEv");if(ie)ie.onclick=()=>pickFile(".xlsx,.xls,.csv,.ods,.txt",async f=>{try{const rows=await readRows(f);previewEvento(rows);}catch(e){toast("Fichier illisible : "+e.message);}});
+  const pe=$("#pasteEv");if(pe)pe.onclick=()=>openDlg("Coller les réponses Evento",`<p class="small muted" style="margin:0">Dans Evento, sélectionne le tableau des réponses (noms + créneaux), copie-le (Ctrl+C) puis colle-le ici (Ctrl+V).</p><textarea id="pasteT" placeholder="Colle ici…"></textarea>`,`<button class="btn" data-close>Annuler</button><button class="btn pri" id="pasteOk">Analyser</button>`,d=>{d.querySelector("#pasteOk").onclick=()=>{const t=d.querySelector("#pasteT").value;if(!t.trim())return;const rows=t.split(/\r?\n/).map(l=>l.split(l.includes("\t")?"\t":l.includes(";")?";":","));previewEvento(rows);};});
 }
 function editFam(id,presetSlot){const f=id?S.familles[id]:{nom:"",prenom:"",nb:2,email:"",tel:"",slot:presetSlot||slotsAll()[0]||"",infos:"",source:"manuel",statut:"inscrit"};
   openDlg(id?"Modifier la famille":"Ajouter une famille",`<div class="fgrid"><label class="f">Nom<input type="text" id="fN" value="${esc(f.nom)}"></label><label class="f">Prénom<input type="text" id="fP" value="${esc(f.prenom||"")}"></label>
@@ -1067,15 +1126,16 @@ function proposeFamily(sid,msg){const L=waitingFams().sort((a,b)=>((b.attend===s
 
 /* ---------- Documents ---------- */
 function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").length;
-  const files=[["flyers_portes_ouvertes.pdf","th_flyers-1.png","Flyers d'invitation (3 par A4)","Invitation avec QR code d'inscription Evento, à distribuer dans les écoles primaires."]];
+  const files=[["flyers_portes_ouvertes.pdf","th_flyers-1.png","Flyers d'invitation (3 par A4)","Ancienne version avec le QR code Evento. Pour l'inscription en ligne de l'appli, imprime plutôt l'affiche A4 du QR ci-dessous ou mets à jour le QR du flyer."]];
   v.innerHTML=`<h2>Documents</h2><p class="lead">Les documents des portes ouvertes au même endroit, et ceux que l'outil remplit pour toi. Le feuillet d'accueil se prépare dans l'onglet <b>Feuillet</b>, les fiches ateliers dans l'onglet <b>Ateliers</b>.</p>
   <div class="grid">${files.map(([f,th,t,d])=>`<div class="card doc"><div class="th" style="background-image:url('docs/${th}')" role="img" aria-label="Aperçu ${esc(t)}"></div><div><h3>${t}</h3><p>${d}</p><div class="row"><a class="btn sm" href="docs/${f}" target="_blank" rel="noopener">Ouvrir</a><button class="btn sm" data-dl="${f}">Télécharger</button></div></div></div>`).join("")}</div>
   <div class="grid g2" style="margin-top:16px">
-    <div class="card"><div class="card-h"><h3>QR code d'inscription Evento</h3></div>
+    <div class="card"><div class="card-h"><h3>QR code d'inscription des familles</h3></div>
       <div class="row" style="align-items:flex-start;gap:16px"><div class="qr" id="qrBox"></div><div style="flex:1;min-width:220px;display:grid;gap:8px">
-        <label class="f">Lien Evento<input type="text" id="evUrl" value="${esc(c.eventoUrl)}"></label>
+        <label class="f">Le QR code mène vers<select id="qrCible"><option value="app" ${IC().qr!=="evento"?"selected":""}>L'inscription en ligne de l'appli</option><option value="evento" ${IC().qr==="evento"?"selected":""}>Le sondage Evento</option></select></label>
+        ${IC().qr==="evento"?`<label class="f">Lien Evento<input type="text" id="evUrl" value="${esc(c.eventoUrl)}"></label>`:`<label class="f">Lien<input type="text" id="evUrl" readonly value="${esc(inscLink())}"></label>`}
         <div class="row"><button class="btn sm" id="qrPng">Télécharger le QR (PNG)</button><button class="btn sm" id="qrAff">Affiche A4 (PDF)</button><button class="btn sm" id="copyUrl">Copier le lien</button></div>
-        <p class="small muted" style="margin:0">QR généré à partir du lien : il reste juste si tu changes de sondage.</p></div></div></div>
+        <p class="small muted" style="margin:0">Le même QR sert à l'affiche A4 et au feuillet d'accueil.</p></div></div></div>
     <div class="card"><div class="card-h"><h3>Documents générés par l'outil</h3></div>
       <div style="display:grid;gap:8px">
         <button class="btn" id="g1" style="justify-content:space-between">Convocations élèves remplies (PDF, 2 par page)<span class="muted small">${Object.keys(S.eleves).length} élèves</span></button>
@@ -1098,10 +1158,10 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
     <div class="row"><button class="btn" id="bkOut">Exporter une sauvegarde (JSON)</button><button class="btn" id="bkIn">Restaurer une sauvegarde</button><span class="sp"></span><button class="btn" id="rstLive">Remettre l'accueil à zéro</button><button class="btn" id="rstFam" style="color:var(--bad)">Effacer toutes les inscriptions</button></div>
     <p class="small muted" style="margin:8px 0 0">« Remettre l'accueil à zéro » efface les pointages et statuts du jour J (pratique après un essai) sans toucher au planning.</p></div>`;
   v.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{try{const r=await fetch("docs/"+b.dataset.dl);const blob=await r.blob();saveFile(b.dataset.dl,blob);}catch(e){toast("Fichier introuvable.");}});
-  drawQR();$("#evUrl").onchange=e=>{putConfig({eventoUrl:e.target.value.trim()});};
-  $("#qrPng").onclick=()=>{const cv=qrCanvas(C().eventoUrl,12);cv.toBlob(b=>saveFile("qrcode_inscription_portes_ouvertes.png",b));};
+  drawQR();$("#qrCible").onchange=e=>setIC({qr:e.target.value});if(IC().qr==="evento")$("#evUrl").onchange=e=>{putConfig({eventoUrl:e.target.value.trim()});};
+  $("#qrPng").onclick=()=>{const cv=qrCanvas(inscUrl(),12);cv.toBlob(b=>saveFile("qrcode_inscription_portes_ouvertes.png",b));};
   $("#qrAff").onclick=pdfAffiche;
-  $("#copyUrl").onclick=()=>{navigator.clipboard.writeText(C().eventoUrl).then(()=>toast("Lien copié."),()=>{const i=$("#evUrl");i.select();toast("Sélectionné : Ctrl+C pour copier.");});};
+  $("#copyUrl").onclick=()=>{navigator.clipboard.writeText(inscUrl()).then(()=>toast("Lien copié."),()=>{const i=$("#evUrl");i.select();toast("Sélectionné : Ctrl+C pour copier.");});};
   $("#g1").onclick=pdfConvocations;$("#g2").onclick=pdfPlanning;$("#g3").onclick=pdfAccueil;$("#g4").onclick=xlsExport;bindMerci();
   ["college","ville","date","dateTexte","horaires","responsable","lieuRdv","dateCourrier","signature"].forEach(k=>{$("#k_"+k).onchange=e=>putConfig({[k]:e.target.value.trim()});});
   $("#k_slots").onchange=e=>{const s=e.target.value.split(/[,;\s]+/).map(tmin).filter(x=>x!=null).sort((a,b)=>a-b).map(fmt);if(!s.length)return toast("Aucun créneau reconnu.");putConfig({slots:[...new Set(s)]});};
@@ -1112,7 +1172,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
   $("#rstFam").onclick=async()=>{if(!(await ask(`Supprimer les ${famList().length} familles inscrites ? (les élèves et ateliers restent)`,"Tout effacer",true)))return;await delMany("familles",Object.keys(S.familles));toast("Inscriptions effacées.");};
 }
 function qrCanvas(text,cell){const q=qrcode(0,"M");q.addData(text);q.make();const n=q.getModuleCount(),m=4,cv=document.createElement("canvas");cv.width=cv.height=(n+m*2)*cell;const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.fillStyle="#000";for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect((c+m)*cell,(r+m)*cell,cell,cell);return cv;}
-function drawQR(){const b=$("#qrBox");if(!b||typeof qrcode==="undefined")return;try{const cv=qrCanvas(C().eventoUrl,6);b.innerHTML="";b.appendChild(cv);}catch(e){b.textContent="Lien trop long pour un QR code.";}}
+function drawQR(){const b=$("#qrBox");if(!b||typeof qrcode==="undefined")return;try{const cv=qrCanvas(inscUrl(),6);b.innerHTML="";b.appendChild(cv);}catch(e){b.textContent="Lien trop long pour un QR code.";}}
 
 /* ============ PDF & Excel ============ */
 const P=s=>String(s??"").replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/–|—/g,"-").replace(/…/g,"...").replace(/ | /g," ");
@@ -1143,14 +1203,14 @@ function pdfAccueil(){const c=C();const slots=slotsAll();const fams=famList().fi
   const doc=newPdf();if(!doc)return;const rows=[];slots.forEach(s=>{const fs=famBySlot(s).filter(f=>f.statut!=="absent");if(!fs.length)return;rows.push({section:`${s} - ${fs.length} famille(s), ${pers(fs)} pers.`});fs.forEach(f=>{const sid=f.eleve||f.elevePrevu;const e=S.eleves[sid];rows.push(["",`${f.nom} ${f.prenom||""}`,f.nb||1,e?`${fullName(e)} (${e.classe})`:"",f.tel||"","",""]);});});
   tablePdf(doc,`Accueil des familles - ${c.dateTexte}`,`${fams.length} familles · ${pers(fams)} personnes · liste de secours papier`,[{t:"",w:8,box:1},{t:"Famille",w:52},{t:"Pers.",w:12},{t:"Élève prévu",w:52},{t:"Téléphone",w:28},{t:"Départ",w:17},{t:"Retour",w:17}],rows);
   savePdf(doc,"liste_accueil_familles.pdf");}
-function pdfAffiche(){const c=C();const doc=newPdf();if(!doc)return;const cv=qrCanvas(c.eventoUrl,14);const img=cv.toDataURL("image/png");
+function pdfAffiche(){const c=C();const doc=newPdf();if(!doc)return;const url=inscUrl();const cv=qrCanvas(url,14);const img=cv.toDataURL("image/png");
   doc.setFillColor(196,32,111);doc.rect(0,0,210,14,"F");doc.setFont("helvetica","bold");doc.setFontSize(34);doc.text("PORTES OUVERTES",105,45,{align:"center"});
   doc.setFontSize(18);doc.setFont("helvetica","normal");doc.text(P(c.college+" - "+c.ville),105,58,{align:"center"});doc.setFont("helvetica","bold");doc.setTextColor(196,32,111);doc.text(P(cap(c.dateTexte)+" - "+c.horaires),105,70,{align:"center"});doc.setTextColor(0);
   doc.addImage(img,"PNG",45,84,120,120);doc.setFontSize(20);doc.text("Inscription obligatoire",105,220,{align:"center"});doc.setFont("helvetica","normal");doc.setFontSize(13);doc.text("Scannez le QR code pour choisir votre créneau de visite.",105,230,{align:"center"});
-  doc.setFontSize(8);doc.setTextColor(110);doc.text(doc.splitTextToSize(c.eventoUrl,180),105,245,{align:"center"});doc.setTextColor(0);doc.setFillColor(107,63,209);doc.rect(0,283,210,14,"F");
+  doc.setFontSize(8);doc.setTextColor(110);doc.text(doc.splitTextToSize(url,180),105,245,{align:"center"});doc.setTextColor(0);doc.setFillColor(107,63,209);doc.rect(0,283,210,14,"F");
   savePdf(doc,"affiche_qrcode_inscription.pdf");}
 function xlsExport(){if(!window.XLSX)return toast("Excel indisponible, recharge la page.");const wb=XLSX.utils.book_new();
-  const fams=famList().sort((a,b)=>(tmin(a.slot)??9999)-(tmin(b.slot)??9999)||norm(a.nom).localeCompare(norm(b.nom))).map(f=>{const e=S.eleves[f.eleve||f.elevePrevu];return {Créneau:f.slot,Nom:f.nom,Prénom:f.prenom,Personnes:+f.nb||1,Email:f.email,Téléphone:f.tel,Informations:f.infos,Source:f.source==="sur place"?"Sans inscription (sur place)":f.source==="manuel"?"Ajout manuel":"Evento","Élève":e?fullName(e):"",Classe:e?e.classe:"",Statut:ST[f.statut||"inscrit"][0],Arrivée:f.hArrivee||"",Départ:f.hDepart||"",Retour:f.hRetour||""};});
+  const fams=famList().sort((a,b)=>(tmin(a.slot)??9999)-(tmin(b.slot)??9999)||norm(a.nom).localeCompare(norm(b.nom))).map(f=>{const e=S.eleves[f.eleve||f.elevePrevu];return {Créneau:f.slot,Nom:f.nom,Prénom:f.prenom,Personnes:+f.nb||1,Email:f.email,Téléphone:f.tel,Informations:f.infos,Source:f.source==="sur place"?"Sans inscription (sur place)":f.source==="manuel"?"Ajout manuel":f.source==="en ligne"?"Inscription en ligne":"Evento","Élève":e?fullName(e):"",Classe:e?e.classe:"",Statut:ST[f.statut||"inscrit"][0],Arrivée:f.hArrivee||"",Départ:f.hDepart||"",Retour:f.hRetour||""};});
   const el=Object.values(S.eleves).map(e=>({e,cv:convoc(e)})).sort((a,b)=>(a.cv.h??9999)-(b.cv.h??9999)).map(({e,cv})=>({Nom:e.nom,Prénom:e.prenom,Classe:e.classe,"Il/elle":genreOf(e),Rôle:e.role==="atelier"?"Atelier "+e.atelier+(e.aussiVisite?" + visite":""):"Visite","Convoqué à":fmt(cv.h),Visites:cv.visites.map(x=>fmt(x.t)).join(", "),Familles:cv.visites.map(x=>x.fs.map(f=>f.nom).join("+")).join(" / "),"Libéré à":fmt(cv.fin),Présence:e.presence||""}));
   const at=Object.values(S.ateliers).map(a=>({Atelier:a.nom,Pôle:a.pole,Salle:a.salle,Professeur:a.prof,Horaires:a.horaires,Matériel:a.materiel,"Fiche reçue":a.ficheRecue?"oui":"non",Élèves:a.eleves}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(fams.length?fams:[{Créneau:""}]),"Familles");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(el.length?el:[{Nom:""}]),"Élèves");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(at.length?at:[{Atelier:""}]),"Ateliers");

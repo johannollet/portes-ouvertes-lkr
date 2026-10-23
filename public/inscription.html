@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Inscription · Portes ouvertes</title>
+<meta name="description" content="Inscription à la matinée portes ouvertes du collège : choisissez votre créneau de visite.">
+<meta name="theme-color" content="#1d1530">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@500;600;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+.ins .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.ins .slot{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;display:grid;gap:2px;font:inherit;color:var(--ink)}
+.ins .slot b{font:700 20px var(--f-mono)}
+.ins .slot span{font-size:12px;color:var(--muted)}
+.ins .slot[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--card))}
+.ins .slot[aria-pressed="true"] span{color:var(--accent);font-weight:700}
+.ins .slot:disabled{opacity:.45;cursor:not-allowed;text-decoration:line-through}
+.ins .slot.few span{color:var(--warn);font-weight:700}
+.ins .pfs input[type=text],.ins .pfs input[type=email],.ins .pfs select,.ins .pfs textarea{font-size:16px;font-family:var(--f-body);width:100%}
+.ins .intro{font-size:17px;line-height:1.5;margin:0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.recap{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;text-align:left;margin:0 auto;font-size:15px}.recap dt{color:var(--muted)}.recap dd{margin:0;font-weight:700}
+.bigslot{font:800 44px var(--f-mono);color:var(--accent);line-height:1}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><div class="mark"><small>Invitation</small>Portes<br>ouvertes</div>
+  <div><h1 id="hTitle">Collège Lili Keller Rosenberg</h1><p id="hSub">Inscription à la matinée portes ouvertes</p></div></div>
+</div></header>
+<main><div class="wrap" id="view"><div class="empty"><b>Chargement…</b></div></div></main>
+<script>
+/* Page publique d'inscription des familles : elle ne lit que les réglages publiés par l'organisateur
+   et le nombre d'inscrits par créneau. L'inscription part vers /api/inscription. */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api=async(path,op,extra)=>{const r=await fetch(path,{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}if(!r.ok){const e=new Error(j.error||("Erreur "+r.status));e.status=r.status;e.j=j;throw e;}return j;};
+const K="po-lkr-inscription";let MINE=null;try{MINE=JSON.parse(localStorage.getItem(K)||"null");}catch(e){}
+let INFO={college:"Collège Lili Keller Rosenberg",dateTexte:"",horaires:""},INS=null,COUNTS={},F=null,ID=null,TK=null,sent=false,cancelled=false,busy=false,err="";
+const empty=()=>({nom:"",prenom:"",email:"",ecole:"",niveau:"",nb:2,slot:"",message:""});
+const tmin=s=>{const m=String(s||"").match(/(\d{1,2})\s*[hH:]\s*(\d{2})?/);return m?+m[1]*60+(+(m[2]||0)):9999;};
+async function loadPlaces(){try{COUNTS=(await api("/api/inscription","places")).counts||{};}catch(e){}}
+async function init(){try{const j=await api("/api/enquete","public");if(j.info)INFO={...INFO,...Object.fromEntries(Object.entries(j.info).filter(([,v])=>v))};INS=j.insc;}catch(e){err="Impossible de charger la page. Vérifiez votre connexion.";}
+  $("#hTitle").textContent=INFO.college;$("#hSub").textContent=INFO.dateTexte?`Portes ouvertes du ${INFO.dateTexte}${INFO.horaires?" · "+INFO.horaires:""}`:"Inscription à la matinée portes ouvertes";
+  const q=new URLSearchParams(location.search);const id=q.get("id")||(MINE&&MINE.id),k=q.get("k")||(MINE&&MINE.token);
+  if(id&&k){try{const j=await api("/api/inscription","load",{id,token:k});F={...empty(),...j.data};ID=id;TK=k;cancelled=j.annule;if(!cancelled)sent=!q.get("id")?true:false;}catch(e){F=empty();}}else F=empty();
+  await loadPlaces();render();}
+const editUrl=()=>`${location.origin}/inscription?id=${encodeURIComponent(ID)}&k=${encodeURIComponent(TK)}`;
+const left=s=>{const p=+(INS&&INS.places)||0;if(!p)return null;const own=ID&&!cancelled&&F.slot===s&&sent?0:0;return Math.max(0,p-(COUNTS[s]||0))+own;};
+function collect(){const v=$("#view");["nom","prenom","email","ecole","niveau","nb","message"].forEach(k=>{const el=v.querySelector("#i_"+k);if(el)F[k]=k==="nb"?(+el.value||1):el.value;});}
+function recap(){return `<dl class="recap"><dt>Famille</dt><dd>${esc(F.nom.toUpperCase())} ${esc(F.prenom)}</dd><dt>E-mail</dt><dd>${esc(F.email)}</dd><dt>École</dt><dd>${esc(F.ecole)} · ${esc(F.niveau)}</dd><dt>Personnes</dt><dd>${esc(F.nb)}</dd></dl>`;}
+function render(){const v=$("#view");
+  if(!INS||!INS.ouvert){v.innerHTML=`<div class="pf"><div class="card pf-ok"><h2>Inscriptions fermées</h2><p class="muted">${err?esc(err):"Les inscriptions à la matinée portes ouvertes ne sont pas ouvertes pour le moment, ou sont terminées. Pour toute question, contactez le secrétariat du collège."}</p>${ID&&!cancelled?`<p>Votre inscription à <b>${esc(F.slot)}</b> reste bien enregistrée.</p>`:""}</div></div>`;return;}
+  if(cancelled){v.innerHTML=`<div class="pf"><div class="card pf-ok"><h2>Inscription annulée</h2><p class="muted">Votre inscription a bien été annulée.</p><button class="btn pri" id="re">Faire une nouvelle inscription</button></div></div>`;
+    $("#re").onclick=()=>{ID=null;TK=null;cancelled=false;sent=false;F={...F,slot:""};try{localStorage.removeItem(K);}catch(e){}history.replaceState(null,"",location.pathname);render();};return;}
+  if(sent){v.innerHTML=`<div class="pf"><div class="card pf-ok"><div class="pf-check">✓</div><h2>Inscription confirmée</h2><p>Nous vous attendons ${INFO.dateTexte?"le <b>"+esc(INFO.dateTexte)+"</b>":""} à</p><div class="bigslot">${esc(F.slot)}</div>${recap()}
+    ${INS.confirmation?`<p>${esc(INS.confirmation)}</p>`:""}
+    <p class="small muted">Pour modifier votre créneau ou annuler, conservez ce lien (il est aussi mémorisé sur cet appareil). Une capture d'écran de cette page vaut confirmation.</p>
+    <div class="row"><input type="text" readonly id="lk" value="${esc(editUrl())}" style="flex:1;min-width:0"><button class="btn sm" id="cp">Copier</button></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="ed">Modifier mon inscription</button><button class="btn ghost" id="an" style="color:var(--bad)">Annuler mon inscription</button></div></div></div>`;
+    $("#cp").onclick=()=>navigator.clipboard.writeText($("#lk").value).catch(()=>$("#lk").select());$("#ed").onclick=async()=>{sent=false;await loadPlaces();render();};
+    $("#an").onclick=async()=>{const b=$("#an");if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Confirmer l'annulation";return;}try{await api("/api/inscription","cancel",{id:ID,token:TK});cancelled=true;try{localStorage.removeItem(K);}catch(e){}render();}catch(e){alertMsg(e.message);}};return;}
+  const slots=(INS.slots||[]).slice().sort((a,b)=>tmin(a)-tmin(b));const niv=INS.niveaux&&INS.niveaux.length?INS.niveaux:["CM2","CM1","6e","5e","4e","3e","Autre"];
+  v.innerHTML=`<form class="pf ins" id="f" novalidate>
+  <div class="pf-head"><h2>${ID?"Modifier mon inscription":"Inscription aux portes ouvertes"}</h2><p class="intro">${esc(INS.intro||"")}</p>${INS.dateLimite?`<p class="small" style="margin:8px 0 0"><b>Inscription jusqu'au ${esc(INS.dateLimite)}.</b></p>`:""}</div>
+  ${err?`<div class="alert bad">${esc(err)}</div>`:""}
+  <section class="card pfs"><div class="pfh"><span class="n">1</span><h3>Votre créneau de visite</h3></div>
+    <p class="small muted" style="margin:0">Un seul créneau par famille. La visite dure environ une heure, accompagnée par un élève du collège.</p>
+    <div class="slots">${slots.map(s=>{const l=left(s);const full=l!==null&&l<=0&&F.slot!==s;return `<button type="button" class="slot ${l!==null&&l>0&&l<=3?"few":""}" data-s="${esc(s)}" aria-pressed="${F.slot===s}" ${full?"disabled":""}><b>${esc(s)}</b><span>${F.slot===s?"choisi":full?"complet":l===null?"disponible":l+" place"+(l>1?"s":"")}</span></button>`;}).join("")}</div>
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">2</span><h3>Vos coordonnées</h3></div>
+    <div class="fgrid"><label class="f">Nom *<input type="text" id="i_nom" value="${esc(F.nom)}" autocomplete="family-name" maxlength="60"></label><label class="f">Prénom *<input type="text" id="i_prenom" value="${esc(F.prenom)}" autocomplete="given-name" maxlength="60"></label></div>
+    <label class="f">E-mail *<input type="email" id="i_email" value="${esc(F.email)}" autocomplete="email" inputmode="email" maxlength="120"></label>
+    <div class="fgrid"><label class="f">École d'origine *<input type="text" id="i_ecole" value="${esc(F.ecole)}" list="ecoles" maxlength="80" placeholder="ex. École Jean Macé">${INS.ecoles&&INS.ecoles.length?`<datalist id="ecoles">${INS.ecoles.map(e=>`<option value="${esc(e)}">`).join("")}</datalist>`:""}</label>
+      <label class="f">Niveau de classe de l'enfant *<select id="i_niveau"><option value="">Choisir…</option>${niv.map(n=>`<option ${F.niveau===n?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
+      <label class="f">Nombre de personnes<input type="number" id="i_nb" min="1" max="10" value="${esc(F.nb||2)}"></label></div>
+    <label class="f">Une question, une remarque (facultatif)<textarea id="i_message" rows="2" maxlength="400">${esc(F.message)}</textarea></label>
+    <div class="hp" aria-hidden="true"><label>Site <input type="text" id="site" tabindex="-1" autocomplete="off"></label></div>
+  </section>
+  <div class="row"><button class="btn pri lg" id="go" ${busy?"disabled":""}>${busy?"Envoi…":ID?"Enregistrer les modifications":"Je m'inscris"}</button><span id="msg" class="small" style="color:var(--bad)"></span></div>
+  <p class="small muted" style="margin:0">Vos coordonnées servent uniquement à l'organisation des portes ouvertes du collège.</p></form>`;
+  const f=$("#f");f.addEventListener("input",collect);
+  f.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{collect();F.slot=b.dataset.s;render();});
+  f.onsubmit=async e=>{e.preventDefault();collect();const m=$("#msg");m.textContent="";
+    const miss=[!F.slot&&"le créneau",!F.nom.trim()&&"le nom",!F.prenom.trim()&&"le prénom",!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(F.email.trim())&&"un e-mail valide",!F.ecole.trim()&&"l'école d'origine",!F.niveau&&"le niveau de classe"].filter(Boolean);
+    if(miss.length){m.textContent="Il manque : "+miss.join(", ")+".";return;}
+    busy=true;$("#go").disabled=true;$("#go").textContent="Envoi…";
+    try{const j=await api("/api/inscription","submit",{fiche:F,id:ID||undefined,token:TK||undefined,site:$("#site").value});ID=j.id;TK=j.token;try{localStorage.setItem(K,JSON.stringify({id:ID,token:TK}));}catch(_){}sent=true;err="";history.replaceState(null,"",location.pathname);}
+    catch(er){err=er.message||"Envoi impossible, réessayez.";if(er.j&&er.j.complet){F.slot="";await loadPlaces();}}
+    busy=false;render();window.scrollTo({top:0});};}
+function alertMsg(t){err=t;render();}
+init();
+</script>
+</body></html>

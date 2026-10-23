@@ -33,6 +33,12 @@ function cleanVol(v) {
   const list = (a, n, m) => (Array.isArray(a) ? a : []).slice(0, n).map((x) => str(x, m)).filter(Boolean);
   return { ouvert: !!v.ouvert, classes: list(v.classes, 60, 10), ateliers: list(v.ateliers, 40, 80), dateLimite: str(v.dateLimite, 40), message: str(v.message, 400) };
 }
+function cleanInsc(v) {
+  v = v && typeof v === "object" ? v : {};
+  const list = (a, n, m) => (Array.isArray(a) ? a : []).slice(0, n).map((x) => str(x, m)).filter(Boolean);
+  return { ouvert: !!v.ouvert, intro: str(v.intro, 800), slots: list(v.slots, 40, 10), places: Math.max(0, parseInt(v.places) || 0),
+    niveaux: list(v.niveaux, 15, 30), ecoles: list(v.ecoles, 60, 80), dateLimite: str(v.dateLimite, 60), confirmation: str(v.confirmation, 500) };
+}
 function cleanInfo(i) {
   i = i && typeof i === "object" ? i : {};
   return { college: str(i.college, 100), ville: str(i.ville, 60), dateTexte: str(i.dateTexte, 80), horaires: str(i.horaires, 40), responsable: str(i.responsable, 80), accent: str(i.accent, 10) };
@@ -51,7 +57,7 @@ export default async (req) => {
     switch (b.op) {
       case "public": {
         const pub = (await store.get("public", { type: "json" })) || {};
-        return json({ info: pub.info || null, enquete: pub.enquete || null, vol: pub.vol || null });
+        return json({ info: pub.info || null, enquete: pub.enquete || null, vol: pub.vol || null, insc: pub.insc || null });
       }
       case "answer": {
         if (b.site) return json({ ok: true }); // robot : on fait semblant
@@ -86,7 +92,7 @@ export default async (req) => {
       }
       case "publish": {
         if (!isAdmin) { await wait(); return json({ error: "code" }, 401); }
-        await store.setJSON("public", { info: cleanInfo(b.info), enquete: cleanEnquete(b.enquete), vol: cleanVol(b.vol), at: new Date().toISOString() });
+        await store.setJSON("public", { info: cleanInfo(b.info), enquete: cleanEnquete(b.enquete), vol: cleanVol(b.vol), insc: cleanInsc(b.insc), at: new Date().toISOString() });
         return json({ ok: true });
       }
       case "clear": {
