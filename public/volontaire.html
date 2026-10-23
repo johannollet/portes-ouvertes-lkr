@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Élève volontaire · Portes ouvertes</title>
+<meta name="theme-color" content="#1d1530">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@500;600;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+.vo .opt{display:flex;gap:12px;align-items:flex-start;border:2px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--card)}
+.vo .opt input{width:22px;height:22px;margin-top:2px;accent-color:var(--accent);flex:none}
+.vo .opt b{display:block;font-size:16px}.vo .opt span{font-size:14px;color:var(--muted)}
+.vo .opt:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--card))}
+.vo .sub{margin:8px 0 0 34px;display:grid;gap:8px}
+.vo select,.vo input[type=time]{font-size:16px;font-family:var(--f-body)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><div class="mark"><small>Invitation</small>Portes<br>ouvertes</div>
+  <div><h1 id="hTitle">Collège Lili Keller Rosenberg</h1><p id="hSub">Inscription des élèves volontaires</p></div></div>
+</div></header>
+<main><div class="wrap" id="view"><div class="empty"><b>Chargement…</b></div></div></main>
+<script>
+/* Page autonome des élèves volontaires : aucune donnée de l'appli n'est chargée ici.
+   L'élève envoie seulement son inscription à /api/volontaire ; l'organisateur la valide dans l'appli. */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api=async(path,op,extra)=>{const r=await fetch(path,{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}if(!r.ok){const e=new Error(j.error||("Erreur "+r.status));e.status=r.status;throw e;}return j;};
+const K="po-lkr-volontaire";let MINE=null;try{MINE=JSON.parse(localStorage.getItem(K)||"null");}catch(e){}
+let INFO={college:"Collège Lili Keller Rosenberg",dateTexte:"",horaires:"",responsable:"l'organisateur"},VOL=null,F=null,ID=null,TK=null,sent=false,busy=false,err="";
+const empty=()=>({nom:"",prenom:"",classe:"",visite:true,atelier:false,atelierChoix:"",famille:false,familleNom:"",familleLien:"",dispo:"tout",dispoDes:"",dispoJusqua:"",accord:false,message:""});
+async function init(){try{const j=await api("/api/enquete","public");if(j.info)INFO={...INFO,...Object.fromEntries(Object.entries(j.info).filter(([,v])=>v))};VOL=j.vol;}catch(e){err="Impossible de charger la page. Vérifie ta connexion.";}
+  $("#hTitle").textContent=INFO.college;$("#hSub").textContent=INFO.dateTexte?`Portes ouvertes du ${INFO.dateTexte} · élèves volontaires`:"Inscription des élèves volontaires";
+  const q=new URLSearchParams(location.search);const id=q.get("id")||(MINE&&MINE.id),k=q.get("k")||(MINE&&MINE.token);
+  if(id&&k){try{const j=await api("/api/volontaire","load",{id,token:k});F={...empty(),...j.data};ID=id;TK=k;}catch(e){F=empty();}}else F=empty();
+  render();}
+const editUrl=()=>`${location.origin}/volontaire?id=${encodeURIComponent(ID)}&k=${encodeURIComponent(TK)}`;
+function collect(){const v=$("#view");const g=id=>{const el=v.querySelector("#"+id);return el?(el.type==="checkbox"?el.checked:el.value):undefined;};
+  ["nom","prenom","classe","atelierChoix","familleNom","familleLien","dispoDes","dispoJusqua","message"].forEach(k=>{const x=g("v_"+k);if(x!==undefined)F[k]=x;});
+  ["visite","atelier","famille","accord"].forEach(k=>{const x=g("v_"+k);if(x!==undefined)F[k]=x;});const d=v.querySelector("input[name=dispo]:checked");if(d)F.dispo=d.value;}
+function render(){const v=$("#view");
+  if(!VOL||!VOL.ouvert){v.innerHTML=`<div class="pf"><div class="card pf-ok"><h2>Inscriptions fermées</h2><p class="muted">${err?esc(err):"Les inscriptions des élèves volontaires ne sont pas ouvertes pour le moment. Renseigne-toi auprès de "+esc(INFO.responsable)+"."}</p>${ID?`<p class="small">Ton inscription est bien enregistrée.</p>`:""}</div></div>`;return;}
+  if(sent){v.innerHTML=`<div class="pf"><div class="card pf-ok"><div class="pf-check">✓</div><h2>Merci ${esc(F.prenom)} !</h2><p>Ton inscription est bien envoyée à ${esc(INFO.responsable)}. Une fois validée, tu recevras ta convocation avec ton heure d'arrivée.</p>
+    <p class="small muted">Pour la modifier plus tard (sur ce téléphone ou avec ce lien) :</p><div class="row"><input type="text" readonly id="lk" value="${esc(editUrl())}" style="flex:1;min-width:0"><button class="btn sm" id="cp">Copier</button></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="ed">Modifier mon inscription</button></div></div></div>`;
+    $("#cp").onclick=()=>navigator.clipboard.writeText($("#lk").value).catch(()=>$("#lk").select());$("#ed").onclick=()=>{sent=false;render();};return;}
+  const ats=(VOL.ateliers||[]);const cls=(VOL.classes||[]);
+  v.innerHTML=`<form class="pf vo" id="vf" novalidate>
+  <div class="pf-head"><span class="pill acc">Élèves</span><h2>${ID?"Modifier mon inscription":"Je participe aux portes ouvertes"}</h2><p class="lead">${INFO.dateTexte?`Le ${esc(INFO.dateTexte)}${INFO.horaires?", "+esc(INFO.horaires):""}, `:""}le collège ouvre ses portes aux futures familles. Inscris-toi pour faire visiter le collège ou aider sur un atelier.${VOL.dateLimite?` <b>Inscriptions jusqu'au ${esc(VOL.dateLimite)}.</b>`:""}</p>${VOL.message?`<p class="small" style="margin:6px 0 0">${esc(VOL.message)}</p>`:""}</div>
+  ${err?`<div class="alert bad">${esc(err)}</div>`:""}
+  <section class="card pfs"><div class="pfh"><span class="n">1</span><h3>Qui es-tu ?</h3></div>
+    <div class="fgrid"><label class="f">Nom *<input type="text" id="v_nom" value="${esc(F.nom)}" autocomplete="family-name" maxlength="60"></label><label class="f">Prénom *<input type="text" id="v_prenom" value="${esc(F.prenom)}" autocomplete="given-name" maxlength="60"></label>
+    <label class="f">Classe *${cls.length?`<select id="v_classe"><option value="">Choisis…</option>${cls.map(c=>`<option ${F.classe===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`:`<input type="text" id="v_classe" value="${esc(F.classe)}" placeholder="ex. 4B" maxlength="10">`}</label></div></section>
+  <section class="card pfs"><div class="pfh"><span class="n">2</span><h3>Comment veux-tu aider ?</h3></div>
+    <label class="opt"><input type="checkbox" id="v_visite" ${F.visite?"checked":""}><div><b>Faire visiter le collège à des familles</b><span>Tu accompagnes une famille pendant environ une heure.</span></div></label>
+    ${ats.length?`<label class="opt"><input type="checkbox" id="v_atelier" ${F.atelier?"checked":""}><div><b>Aider sur un atelier</b><span>Avec un professeur, dans sa salle.</span></div></label>
+    ${F.atelier?`<div class="sub"><label class="f">Quel atelier ?<select id="v_atelierChoix"><option value="">Peu importe</option>${ats.map(a=>`<option ${F.atelierChoix===a?"selected":""}>${esc(a)}</option>`).join("")}</select></label></div>`:""}`:""}
+    <label class="opt"><input type="checkbox" id="v_famille" ${F.famille?"checked":""}><div><b>Faire visiter le collège à ma famille</b><span>Un petit frère, une sœur, un cousin… vient visiter le collège.</span></div></label>
+    ${F.famille?`<div class="sub"><div class="fgrid"><label class="f">Nom de la famille inscrite<input type="text" id="v_familleNom" value="${esc(F.familleNom)}" placeholder="nom utilisé pour l'inscription"></label><label class="f">Lien<input type="text" id="v_familleLien" value="${esc(F.familleLien)}" placeholder="petit frère, cousine…"></label></div></div>`:""}
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">3</span><h3>Tes disponibilités</h3></div>
+    <label class="opt"><input type="radio" name="dispo" value="tout" ${F.dispo!=="partiel"?"checked":""}><div><b>Toute la matinée</b></div></label>
+    <label class="opt"><input type="radio" name="dispo" value="partiel" ${F.dispo==="partiel"?"checked":""}><div><b>Seulement une partie</b></div></label>
+    ${F.dispo==="partiel"?`<div class="sub"><div class="fgrid"><label class="f">À partir de<input type="time" id="v_dispoDes" value="${esc(F.dispoDes)}"></label><label class="f">Jusqu'à<input type="time" id="v_dispoJusqua" value="${esc(F.dispoJusqua)}"></label></div></div>`:""}
+  </section>
+  <section class="card pfs"><div class="pfh"><span class="n">4</span><h3>Envoi</h3></div>
+    <label class="f">Un message (facultatif)<textarea id="v_message" rows="2" maxlength="400">${esc(F.message)}</textarea></label>
+    <label class="opt"><input type="checkbox" id="v_accord" ${F.accord?"checked":""}><div><b>Mes parents sont d'accord pour que je participe *</b><span>Ils recevront ta convocation avec ton heure d'arrivée.</span></div></label>
+    <div class="hp" aria-hidden="true"><label>Site <input type="text" id="site" tabindex="-1" autocomplete="off"></label></div>
+    <div class="row"><button class="btn pri lg" id="go" ${busy?"disabled":""}>${busy?"Envoi…":ID?"Enregistrer les modifications":"Envoyer mon inscription"}</button><span id="msg" class="small" style="color:var(--bad)"></span></div>
+  </section></form>`;
+  const vf=$("#vf");vf.addEventListener("input",collect);
+  ["v_atelier","v_famille"].forEach(id=>{const x=$("#"+id);if(x)x.addEventListener("change",()=>{collect();render();});});
+  vf.querySelectorAll("input[name=dispo]").forEach(r=>r.addEventListener("change",()=>{collect();render();}));
+  vf.onsubmit=async e=>{e.preventDefault();collect();const m=$("#msg");m.textContent="";
+    const miss=[!F.nom.trim()&&"ton nom",!F.prenom.trim()&&"ton prénom",!F.classe&&"ta classe",!(F.visite||F.atelier||F.famille)&&"comment tu veux aider",!F.accord&&"l'accord de tes parents"].filter(Boolean);
+    if(miss.length){m.textContent="Il manque : "+miss.join(", ")+".";return;}
+    busy=true;$("#go").disabled=true;try{const j=await api("/api/volontaire","submit",{fiche:F,id:ID||undefined,token:TK||undefined,site:$("#site").value});ID=j.id;TK=j.token;try{localStorage.setItem(K,JSON.stringify({id:ID,token:TK}));}catch(_){}sent=true;err="";}
+    catch(er){err=er.message||"Envoi impossible, réessaie.";}busy=false;render();window.scrollTo({top:0});};}
+init();
+</script>
+</body></html>

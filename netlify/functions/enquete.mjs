@@ -1,6 +1,6 @@
 // Portes ouvertes LKR : enquête de satisfaction et informations publiques (Netlify Blobs).
 // POST /api/enquete avec un corps JSON { op, ... } :
-//   public  : {}                        -> { info, enquete }  (lu par les pages publiques : enquête, fiche atelier)
+//   public  : {}                        -> { info, enquete, vol }  (lu par les pages publiques : enquête, fiche atelier)
 //   answer  : { answers, site }         -> { ok }             (réponse anonyme d'une famille ; « site » = piège à robots)
 //   results : { code }                  -> { reponses: [...] } (organisateur, code d'accès de l'appli)
 //   publish : { code, info, enquete }   -> { ok }             (l'appli publie l'enquête et les infos de l'événement)
@@ -28,6 +28,11 @@ function cleanEnquete(e) {
   }));
   return { ouverte: e.ouverte !== false, titre: str(e.titre, 120), intro: str(e.intro, 400), merci: str(e.merci, 400), questions };
 }
+function cleanVol(v) {
+  v = v && typeof v === "object" ? v : {};
+  const list = (a, n, m) => (Array.isArray(a) ? a : []).slice(0, n).map((x) => str(x, m)).filter(Boolean);
+  return { ouvert: !!v.ouvert, classes: list(v.classes, 60, 10), ateliers: list(v.ateliers, 40, 80), dateLimite: str(v.dateLimite, 40), message: str(v.message, 400) };
+}
 function cleanInfo(i) {
   i = i && typeof i === "object" ? i : {};
   return { college: str(i.college, 100), ville: str(i.ville, 60), dateTexte: str(i.dateTexte, 80), horaires: str(i.horaires, 40), responsable: str(i.responsable, 80), accent: str(i.accent, 10) };
@@ -46,7 +51,7 @@ export default async (req) => {
     switch (b.op) {
       case "public": {
         const pub = (await store.get("public", { type: "json" })) || {};
-        return json({ info: pub.info || null, enquete: pub.enquete || null });
+        return json({ info: pub.info || null, enquete: pub.enquete || null, vol: pub.vol || null });
       }
       case "answer": {
         if (b.site) return json({ ok: true }); // robot : on fait semblant
@@ -81,7 +86,7 @@ export default async (req) => {
       }
       case "publish": {
         if (!isAdmin) { await wait(); return json({ error: "code" }, 401); }
-        await store.setJSON("public", { info: cleanInfo(b.info), enquete: cleanEnquete(b.enquete), at: new Date().toISOString() });
+        await store.setJSON("public", { info: cleanInfo(b.info), enquete: cleanEnquete(b.enquete), vol: cleanVol(b.vol), at: new Date().toISOString() });
         return json({ ok: true });
       }
       case "clear": {

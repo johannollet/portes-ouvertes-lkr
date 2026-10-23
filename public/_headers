@@ -15,3 +15,6 @@
 /ecran*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
+/volontaire*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
