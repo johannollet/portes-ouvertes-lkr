@@ -18,3 +18,5 @@
 /volontaire*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
+/affiche-eleves*
+  X-Robots-Tag: noindex

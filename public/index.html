@@ -894,7 +894,7 @@ function onRemoteDay(prevIV,prevPres){if(UI.tab!=="accueil")return;const iv=inVi
 function ecranCard(){const calls=Object.values(S.appels).filter(a=>a&&a.etat!=="fini");
   return `<div class="sec-t" style="margin-top:0">Écran de la salle des élèves</div>
     <label class="row small"><input type="checkbox" id="ecOn" ${ecranOn()?"checked":""}> J'appelle les élèves sur l'écran</label>
-    ${ecranOn()?`<p class="small muted" style="margin:4px 0 0">Ouvre <a href="ecran.html" target="_blank" rel="noopener">${esc(ecranLink().replace(/^https?:\/\//,""))}</a> sur la télé ou la tablette de la salle · code écran <b class="t">${esc(ecranCode())}</b> <button class="btn ghost sm" id="ecCode">changer</button></p>
+    ${ecranOn()?`<p class="small muted" style="margin:4px 0 0">Ouvre <a href="ecran.html" target="_blank" rel="noopener">${esc(ecranLink().replace(/^https?:\/\//,""))}</a> sur la télé ou la tablette de la salle · code écran <b class="t">${esc(ecranCode())}</b> <button class="btn ghost sm" id="ecCode">changer</button> · <a href="affiche-eleves.html" target="_blank" rel="noopener">affiche pour la salle</a></p>
     ${calls.length?`<div class="sec-t">Appels en cours (${calls.length})</div>${calls.map(a=>`<div class="stu"><span><span class="nm">${esc(fullName(S.eleves[a.eleve]||{}))}</span> <span class="muted small">pour ${esc(a.familleNom)} · ${esc(a.at)}</span> ${callPill(a.eleve)}</span><span class="row" style="gap:4px">${S.familles[a.famille]&&S.familles[a.famille].statut==="arrive"?`<button class="btn sm ok" data-go2="${a.famille}|${a.eleve}">Partir</button>`:""}<button class="btn sm ghost" data-uncall="${a.eleve}" title="Annuler l'appel">✕</button></span></div>`).join("")}`:""}`:""}`;}
 function bindEcran(v){const on=$("#ecOn");if(on)on.onchange=()=>putConfig({ecranActif:on.checked});
   const cc=$("#ecCode");if(cc)cc.onclick=()=>openDlg("Code de l'écran des élèves",`<p class="small muted" style="margin:0">Ce code sert uniquement à ouvrir l'écran de la salle (prénoms, pointage, appels). Il ne donne pas accès à l'appli.</p><label class="f">Nouveau code (4 à 8 chiffres)<input type="text" id="ecIn" inputmode="numeric" maxlength="8"></label>`,`<button class="btn" data-close>Annuler</button><button class="btn pri" id="ecOk">Enregistrer</button>`,d=>{
@@ -1084,6 +1084,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
         <button class="btn" id="g2" style="justify-content:space-between">Planning élèves par heure d'arrivée (PDF)<span class="muted small">pour la table d'accueil</span></button>
         <button class="btn" id="g3" style="justify-content:space-between">Liste d'accueil des familles par créneau (PDF)<span class="muted small">secours papier</span></button>
         <button class="btn" id="g4" style="justify-content:space-between">Tout exporter en Excel<span class="muted small">familles, élèves, ateliers</span></button>
+        <a class="btn" href="affiche-eleves.html" target="_blank" rel="noopener" style="justify-content:space-between">Affiche « mode d'emploi » de la salle des élèves (A4) ↗<span class="muted small">pointage, appels, retours</span></a>
       </div></div>
   </div>
   ${merciCard()}
