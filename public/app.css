@@ -208,6 +208,10 @@ dialog::backdrop{background:rgba(20,10,30,.45)}
 .fat-h{display:flex;gap:2mm;flex-wrap:wrap;align-items:baseline}.fat b{font-size:1em}.fsalle{font-size:.82em;background:#f1ecf5;border-radius:1mm;padding:0 1.6mm;white-space:nowrap}
 .fat p{margin:.5mm 0 0;font-size:.86em;color:#4a4260}.fh{display:block;font-size:.84em;color:var(--fa);font-weight:700}
 .flegend{margin-top:auto;display:flex;flex-wrap:wrap;gap:1.4mm 4mm;font-size:.8em;color:#5c5470}.flegend i{display:inline-block;width:2.2mm;height:2.2mm;border-radius:50%;margin-right:1.2mm}
+/* élèves prioritaires */
+.star{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 4px}
+.star.on{color:var(--sun)}
+tr.prio-row td{background:color-mix(in srgb,var(--sun) 7%,var(--card))}
 /* prochains départs */
 .deprows{display:grid;gap:6px}
 .deprow{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1.2fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}

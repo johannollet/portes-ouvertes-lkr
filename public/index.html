@@ -47,7 +47,7 @@ const DEFAULT_CONFIG={
   college:"Collège Lili Keller Rosenberg", ville:"Halluin", date:"2026-11-14", dateTexte:"samedi 14 novembre 2026", horaires:"9h – 12h",
   eventoUrl:"https://evento.renater.fr/survey/inscriptions-portes-ouvertes-college-lili-keller-rosenberg-14-novembre-2026-zd2hovpw",
   slots:["9h00","9h15","9h30","9h45","10h00","10h15","10h30","10h45","11h00","11h15","11h30","11h45"],
-  dureeVisite:60, battement:5, avance:10, delaiRetard:10, maxVisites:3, maxFamilles:2, strategie:"repartir",
+  dureeVisite:60, battement:5, avance:10, delaiRetard:10, maxVisites:3, maxVisitesPrio:4, maxFamilles:2, strategie:"repartir",
   heureAteliers:"8h50", heureReserve:"8h50", heureFin:"12h20",
   responsable:"M. Nollet", signature:"M. Nollet et l'équipe enseignante.", dateCourrier:"", lieuRdv:"auprès de M. Nollet"
 };
@@ -196,11 +196,11 @@ function allocate(fams){
   const out=[],missing=[];
   const nVis=s=>new Set((busy[s.id]||[]).map(x=>x.start)).size;
   for(const f of order){const t=tmin(f.slot);if(t==null){missing.push(f);continue;}
-    const free=studs.filter(s=>{const iv=busy[s.id]||[];if(nVis(s)>=c.maxVisites)return false;const d=tmin(s.dispoDes);if(d!=null&&d>t-c.avance)return false;const fi=tmin(s.dispoJusqua);if(fi!=null&&t+c.dureeVisite>fi)return false;
+    const free=studs.filter(s=>{const iv=busy[s.id]||[];if(nVis(s)>=(s.prioritaire?Math.max(c.maxVisites,+c.maxVisitesPrio||c.maxVisites):c.maxVisites))return false;const d=tmin(s.dispoDes);if(d!=null&&d>t-c.avance)return false;const fi=tmin(s.dispoJusqua);if(fi!=null&&t+c.dureeVisite>fi)return false;
       return iv.every(x=>t>=x.end||t+c.dureeVisite+c.battement<=x.start);});
     let pick=null;
     if(free.length){const lastEnd=s=>Math.max(-1,...(busy[s.id]||[]).filter(x=>x.end<=t).map(x=>x.end));
-      free.sort((a,b)=>((b.presence==="present")-(a.presence==="present"))||((b.confirme!==false)-(a.confirme!==false))||(c.strategie==="reserve"?nVis(b)-nVis(a):nVis(a)-nVis(b))||((a.role==="visite"?0:1)-(b.role==="visite"?0:1))||(nVis(a)&&nVis(b)?lastEnd(b)-lastEnd(a):0)||(niveau(a.classe)-niveau(b.classe))||norm(a.nom).localeCompare(norm(b.nom)));
+      free.sort((a,b)=>((b.presence==="present")-(a.presence==="present"))||((b.prioritaire?1:0)-(a.prioritaire?1:0))||((b.confirme!==false)-(a.confirme!==false))||(c.strategie==="reserve"?nVis(b)-nVis(a):nVis(a)-nVis(b))||((a.role==="visite"?0:1)-(b.role==="visite"?0:1))||(nVis(a)&&nVis(b)?lastEnd(b)-lastEnd(a):0)||(niveau(a.classe)-niveau(b.classe))||norm(a.nom).localeCompare(norm(b.nom)));
       pick=free[0];}
     else if(c.maxFamilles>1){const grp=studs.filter(s=>{const at=(busy[s.id]||[]).filter(x=>x.start===t);return at.length>0&&at.length<c.maxFamilles&&!at.some(x=>x.fige);});
       grp.sort((a,b)=>(busy[a.id]||[]).filter(x=>x.start===t).length-(busy[b.id]||[]).filter(x=>x.start===t).length);pick=grp[0]||null;if(pick)f._grouped=true;}
@@ -765,27 +765,29 @@ function previewEvento(rows){const r=parseEvento(rows);if(r.err||!r.fams.length)
 
 /* ---------- Élèves ---------- */
 function vEleves(v){const el=Object.values(S.eleves);const q=norm(UI.eQ);let list=el;
-  if(UI.eFilter==="visite")list=list.filter(isGuide);else if(UI.eFilter==="atelier")list=list.filter(e=>e.role==="atelier");else if(UI.eFilter==="absent")list=list.filter(e=>e.presence==="absent");else if(UI.eFilter==="genre")list=list.filter(e=>!genreOf(e));
+  if(UI.eFilter==="visite")list=list.filter(isGuide);else if(UI.eFilter==="atelier")list=list.filter(e=>e.role==="atelier");else if(UI.eFilter==="absent")list=list.filter(e=>e.presence==="absent");else if(UI.eFilter==="prio")list=list.filter(e=>e.prioritaire);else if(UI.eFilter==="genre")list=list.filter(e=>!genreOf(e));
   if(q)list=list.filter(e=>norm(fullName(e)+" "+e.classe).includes(q));
   list.sort((a,b)=>niveau(a.classe)-niveau(b.classe)||String(a.classe).localeCompare(String(b.classe))||norm(a.nom).localeCompare(norm(b.nom)));
   const noG=el.filter(e=>!genreOf(e)).length;
-  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Élèves volontaires</h2><p class="lead" style="margin:0">${el.length} élèves · ${el.filter(isGuide).length} pour les visites · ${el.filter(e=>e.role==="atelier").length} sur les ateliers. Les heures de convocation se calculent à partir du planning.</p></div>
+  v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Élèves volontaires</h2><p class="lead" style="margin:0">${el.length} élèves · ${el.filter(isGuide).length} pour les visites · ${el.filter(e=>e.role==="atelier").length} sur les ateliers · ${el.filter(e=>e.prioritaire).length} prioritaire${el.filter(e=>e.prioritaire).length>1?"s":""}. Les heures de convocation se calculent à partir du planning.</p></div>
   <div class="row"><button class="btn" id="impEl">Importer le fichier Excel</button><button class="btn pri" id="addEl">+ Élève</button></div></div>
   ${volCard()}
   <p class="small muted" style="margin:0 0 10px">Il/elle est deviné d'après le prénom (bouton en pointillés) pour les convocations et les lettres. Clique sur <b>il</b> ou <b>elle</b> pour corriger une erreur ; ton choix est alors gardé.</p>${noG?`<div class="alert" style="margin-bottom:12px">${noG} prénom(s) mixte(s) ou inconnu(s) : ${esc(el.filter(e=>!genreOf(e)).map(e=>e.prenom.trim()).join(", "))}. Les documents écriront « Il/Elle » tant que tu n'as pas choisi.</div>`:""}
   <div class="row" style="margin-bottom:12px"><input type="search" id="qEl" placeholder="Rechercher un élève ou une classe…" value="${esc(UI.eQ)}" style="flex:1;min-width:200px">
-  <div class="seg">${[["all","Tous"],["visite","Visites"],["atelier","Ateliers"],["genre","Il/elle à vérifier"],["absent","Absents"]].map(([k,l])=>`<button aria-pressed="${UI.eFilter===k}" data-ef="${k}">${l}</button>`).join("")}</div></div>
-  ${el.length?`<div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>Classe</th><th>Il/Elle</th><th>Rôle</th><th>Visites prévues</th><th>Convoqué·e</th><th>Confirmé</th><th></th></tr></thead><tbody>
-  ${list.map(e=>{const cv=convoc(e);return `<tr><td class="name">${esc(fullName(e))}${e.source==="en ligne"?' <span class="pill info" title="Inscrit(e) en ligne">en ligne</span>':""}${e.presence==="absent"?' <span class="pill bad">absent</span>':e.presence==="present"?' <span class="pill ok">présent</span>':""}</td><td>${esc(e.classe||"")}</td>
+  <div class="seg">${[["all","Tous"],["prio","Prioritaires"],["visite","Visites"],["atelier","Ateliers"],["genre","Il/elle à vérifier"],["absent","Absents"]].map(([k,l])=>`<button aria-pressed="${UI.eFilter===k}" data-ef="${k}">${l}</button>`).join("")}</div></div>
+  ${el.length?`<div class="tbl-wrap"><table><thead><tr><th title="Les élèves prioritaires reçoivent les visites en premier et peuvent en faire davantage">Prioritaire</th><th>Élève</th><th>Classe</th><th>Il/Elle</th><th>Rôle</th><th>Visites prévues</th><th>Convoqué·e</th><th>Confirmé</th><th></th></tr></thead><tbody>
+  ${list.map(e=>{const cv=convoc(e);return `<tr${e.prioritaire?' class="prio-row"':""}><td>${isGuide(e)?`<button class="star ${e.prioritaire?"on":""}" data-prio="${e.id}" aria-pressed="${!!e.prioritaire}" aria-label="Élève prioritaire" title="${e.prioritaire?"Prioritaire : clique pour retirer":"Rendre prioritaire"}">${e.prioritaire?"★":"☆"}</button>`:""}</td><td class="name">${esc(fullName(e))}${e.source==="en ligne"?' <span class="pill info" title="Inscrit(e) en ligne">en ligne</span>':""}${e.presence==="absent"?' <span class="pill bad">absent</span>':e.presence==="present"?' <span class="pill ok">présent</span>':""}</td><td>${esc(e.classe||"")}</td>
   <td><span class="row" style="gap:4px;flex-wrap:nowrap" title="${e.genre?"Choisi à la main : clique à nouveau pour revenir à l'automatique":genreOf(e)?"Deviné d'après le prénom : clique pour confirmer ou corriger":"Prénom mixte : choisis il ou elle"}">${["il","elle"].map(g=>`<button class="ie ${e.genre===g?"set":!e.genre&&genreOf(e)===g?"auto":""}" data-g="${g}" data-id="${e.id}">${g}</button>`).join("")}${genreOf(e)?"":'<span class="pill warn">?</span>'}</span></td>
   <td>${e.role==="atelier"?`<span class="pill info">Atelier ${esc(e.atelier||"")}</span>${e.aussiVisite?' <span class="pill acc">+ visite</span>':""}`:`<span class="pill acc">Visite</span>`}</td>
   <td class="t small">${cv.visites.map(x=>fmt(x.t)+(x.fs.length>1?"×"+x.fs.length:"")).join(" · ")||(isGuide(e)?'<span class="muted" style="font-family:var(--f-body);font-weight:400">réserve</span>':"")}</td>
-  <td class="t">${fmt(cv.h)}</td><td><input type="checkbox" data-conf="${e.id}" ${e.confirme!==false?"checked":""} aria-label="Confirmé"></td><td><button class="btn ghost sm" data-editel="${e.id}">Modifier</button></td></tr>`;}).join("")||`<tr><td colspan="8" class="muted">Aucun élève ne correspond.</td></tr>`}
+  <td class="t">${fmt(cv.h)}</td><td><input type="checkbox" data-conf="${e.id}" ${e.confirme!==false?"checked":""} aria-label="Confirmé"></td><td><button class="btn ghost sm" data-editel="${e.id}">Modifier</button></td></tr>`;}).join("")||`<tr><td colspan="9" class="muted">Aucun élève ne correspond.</td></tr>`}
   </tbody></table></div>`:`<div class="empty"><b>Aucun élève</b>Importe ton fichier Excel des volontaires (colonnes nom, prénom, classe, remarques).</div>`}`;
   const qi=$("#qEl");qi.oninput=()=>{UI.eQ=qi.value;render();};bindVol(v);
   v.querySelectorAll("[data-ef]").forEach(b=>b.onclick=()=>{UI.eFilter=b.dataset.ef;render();});
   v.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{const e=S.eleves[b.dataset.id];patch("eleves",e.id,{genre:e.genre===b.dataset.g?"":b.dataset.g});});
   v.querySelectorAll("[data-conf]").forEach(i=>i.onchange=()=>patch("eleves",i.dataset.conf,{confirme:i.checked}));
+  v.querySelectorAll("[data-prio]").forEach(b=>b.onclick=()=>{const e=S.eleves[b.dataset.prio];const on=!e.prioritaire;patch("eleves",e.id,{prioritaire:on});
+    toast(`${fullName(e)} ${on?"est prioritaire":"n'est plus prioritaire"}. Pour appliquer au planning déjà fait : Planning → « Tout recalculer ».`,6000);});
   v.querySelectorAll("[data-editel]").forEach(b=>b.onclick=()=>editEleve(b.dataset.editel));
   $("#addEl").onclick=()=>editEleve(null);
   $("#impEl").onclick=()=>pickFile(".xlsx,.xls,.csv,.ods",async f=>{try{const rows=await readRows(f);importEleves(rows);}catch(e){toast("Fichier illisible : "+e.message);}});
@@ -805,10 +807,11 @@ function editEleve(id){const e=id?S.eleves[id]:{nom:"",prenom:"",classe:"",genre
   <label class="f">Rôle<select id="eR"><option value="visite" ${e.role==="visite"?"selected":""}>Accompagne des familles</option><option value="atelier" ${e.role==="atelier"?"selected":""}>Atelier</option></select></label><label class="f">Atelier<input type="text" id="eA" value="${esc(e.atelier||"")}" placeholder="chorale, escalade…"></label>
   <label class="f">Disponible à partir de<input type="text" id="eD" value="${esc(e.dispoDes||"")}" placeholder="ex. 10h00"></label><label class="f">Disponible jusqu'à<input type="text" id="eJ" value="${esc(e.dispoJusqua||"")}" placeholder="ex. 11h00"></label><label class="f">Heure de convocation imposée<input type="text" id="eH" value="${esc(e.heureConv||"")}" placeholder="sinon calculée"></label></div>
   <label class="row small"><input type="checkbox" id="eV" ${e.aussiVisite?"checked":""}> Atelier + peut aussi accompagner une famille</label>
-  <label class="row small"><input type="checkbox" id="eK" ${e.confirme!==false?"checked":""}> Confirmé (prioritaire dans l'attribution)</label>
+  <label class="row small"><input type="checkbox" id="eX" ${e.prioritaire?"checked":""}> Élève prioritaire : reçoit les visites en premier et peut en faire davantage</label>
+  <label class="row small"><input type="checkbox" id="eK" ${e.confirme!==false?"checked":""}> Confirmé (passe avant les non confirmés)</label>
   <label class="f">Remarque<input type="text" id="eM" value="${esc(e.remarque||"")}"></label>`,
   `${id?'<button class="btn ghost" id="eDel" style="color:var(--bad)">Supprimer</button><span class="sp"></span>':""}<button class="btn" data-close>Annuler</button><button class="btn pri" id="eOk">Enregistrer</button>`,d=>{
-    d.querySelector("#eOk").onclick=()=>{const g=k=>d.querySelector(k).value.trim();if(!g("#eN"))return toast("Indique le nom.");put("eleves",id||uid(),{...e,nom:g("#eN").toUpperCase(),prenom:g("#eP"),classe:g("#eC"),genre:g("#eG"),role:g("#eR"),atelier:g("#eA"),dispoDes:g("#eD"),dispoJusqua:g("#eJ"),heureConv:g("#eH"),aussiVisite:d.querySelector("#eV").checked,confirme:d.querySelector("#eK").checked,remarque:g("#eM")});d.close();};
+    d.querySelector("#eOk").onclick=()=>{const g=k=>d.querySelector(k).value.trim();if(!g("#eN"))return toast("Indique le nom.");put("eleves",id||uid(),{...e,nom:g("#eN").toUpperCase(),prenom:g("#eP"),classe:g("#eC"),genre:g("#eG"),role:g("#eR"),atelier:g("#eA"),dispoDes:g("#eD"),dispoJusqua:g("#eJ"),heureConv:g("#eH"),aussiVisite:d.querySelector("#eV").checked,confirme:d.querySelector("#eK").checked,prioritaire:d.querySelector("#eX").checked,remarque:g("#eM")});d.close();};
     const x=d.querySelector("#eDel");if(x)x.onclick=async()=>{d.close();if(await ask(`Supprimer ${esc(fullName(e))} ?`,"Supprimer",true)){const fs=famList().filter(f=>f.elevePrevu===id&&!f.eleve);await del("eleves",id);if(fs.length)await putMany("familles",fs.map(f=>[f.id,{...f,elevePrevu:null}]));}};});}
 
 /* ---------- Planning ---------- */
@@ -821,6 +824,7 @@ function vPlan(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),slot
     <label class="f">Battement entre 2 visites (min)<input type="number" id="cBat" value="${c.battement}" min="0" step="5"></label>
     <label class="f">Arrivée avant la visite (min)<input type="number" id="cAv" value="${c.avance}" min="0" step="5"></label>
     <label class="f">Visites max par élève<input type="number" id="cMax" value="${c.maxVisites}" min="1" max="6"></label>
+    <label class="f">Visites max · élèves prioritaires<input type="number" id="cMaxP" value="${Math.max(c.maxVisites,+c.maxVisitesPrio||c.maxVisites)}" min="1" max="8"></label>
     <label class="f">Familles max par élève si manque<input type="number" id="cGrp" value="${c.maxFamilles}" min="1" max="4"></label>
     <label class="f">Répartition<select id="cStr"><option value="repartir" ${c.strategie==="repartir"?"selected":""}>Faire participer tous les volontaires</option><option value="reserve" ${c.strategie==="reserve"?"selected":""}>Utiliser le moins d'élèves (garder des réserves)</option></select></label>
     <label class="f">Convocation ateliers<input type="text" id="cHA" value="${esc(c.heureAteliers)}"></label>
@@ -849,7 +853,7 @@ function vPlan(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),slot
       await put("familles",fid,{...f,fige:true,lien:(e.famillePerso||{}).lien||"",elevePrevu:sid});if(cf.length)await applyAlloc(cf.map(x=>({...x,elevePrevu:null})),true);toast(`${fullName(e)} accompagnera sa famille ${f.nom}.`);});}
   else{const el=Object.values(S.eleves).map(e=>({e,cv:convoc(e)})).filter(x=>x.e.presence!=="absent"&&(!pq||x.cv.visites.some(v=>v.fs.some(famMatch))||startsQ(fullName(x.e)))).sort((a,b)=>(a.cv.h??9999)-(b.cv.h??9999)||norm(a.e.nom).localeCompare(norm(b.e.nom)));
     pb.innerHTML=el.length?`<div class="tbl-wrap"><table><thead><tr><th>Arrivée</th><th>Élève</th><th>Classe</th><th>Mission</th><th>Familles</th></tr></thead><tbody>${el.map(({e,cv})=>`<tr><td class="t">${fmt(cv.h)}</td><td class="name">${esc(fullName(e))}</td><td>${esc(e.classe)}</td><td class="small">${e.role==="atelier"?`Atelier ${esc(e.atelier)}`:""}${cv.visites.length?(e.role==="atelier"?" + ":"")+cv.visites.map(x=>`<span class="t">${fmt(x.t)}</span>`).join(", "):cv.reserve?'<span class="pill">réserve</span>':""}</td><td class="small">${cv.visites.map(x=>x.fs.map(f=>esc(f.nom)).join(" + ")).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty"><b>Aucun élève</b>Importe la liste dans l'onglet Élèves.</div>`;}
-  const num=(id,k)=>{$(id).onchange=e=>putConfig({[k]:Math.max(0,+e.target.value||0)});};num("#cDur","dureeVisite");num("#cBat","battement");num("#cAv","avance");num("#cMax","maxVisites");num("#cGrp","maxFamilles");
+  const num=(id,k)=>{$(id).onchange=e=>putConfig({[k]:Math.max(0,+e.target.value||0)});};num("#cDur","dureeVisite");num("#cBat","battement");num("#cAv","avance");num("#cMax","maxVisites");num("#cMaxP","maxVisitesPrio");num("#cGrp","maxFamilles");
   $("#cStr").onchange=e=>putConfig({strategie:e.target.value});[["#cHA","heureAteliers"],["#cHR","heureReserve"],["#cHF","heureFin"]].forEach(([i,k])=>$(i).onchange=e=>{if(tmin(e.target.value)==null)return toast("Heure non reconnue (ex. 8h50).");putConfig({[k]:fmt(tmin(e.target.value))});});
   v.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{UI.planView=b.dataset.pv;render();});
   {const n=fams.filter(famMatch).length;const qn=$("#qPlanN");if(qn)qn.textContent=pq?`${n} famille${n>1?"s":""} trouvée${n>1?"s":""}`:"";
@@ -906,7 +910,7 @@ function freeGuides(excludeFid){const c=C(),now=nowMin(),iv=inVisitMap(),fams=fa
   return Object.values(S.eleves).filter(e=>isGuide(e)&&e.presence==="present"&&!iv[e.id]&&!e.exclusif).map(e=>{
     const nx=fams.filter(f=>f.id!==excludeFid&&!f.eleve&&f.elevePrevu===e.id&&famActive(f)&&tmin(f.slot)!=null).map(f=>({t:tmin(f.slot),f})).filter(x=>x.t>=now-20&&x.t<now+c.dureeVisite+c.battement).sort((a,b)=>a.t-b.t)[0]||null;
     return {e,nx,done:fams.filter(f=>f.eleve===e.id).length};})
-    .sort((a,b)=>((a.nx?1:0)-(b.nx?1:0))||(a.done-b.done)||niveau(a.e.classe)-niveau(b.e.classe)||norm(a.e.nom).localeCompare(norm(b.e.nom)));}
+    .sort((a,b)=>((a.nx?1:0)-(b.nx?1:0))||((b.e.prioritaire?1:0)-(a.e.prioritaire?1:0))||(a.done-b.done)||niveau(a.e.classe)-niveau(b.e.classe)||norm(a.e.nom).localeCompare(norm(b.e.nom)));}
 const waitingFams=()=>famList().filter(f=>f.statut==="arrive"&&!f.eleve).sort((a,b)=>(tmin(a.hArrivee)??9999)-(tmin(b.hArrivee)??9999));
 /* tableau des prochains départs : ce qui doit partir maintenant, et ce qui pose problème */
 function departRows(){const now=nowMin(),iv=inVisitMap(),d=delaiRetard();
