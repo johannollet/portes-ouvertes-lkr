@@ -5,7 +5,7 @@ Outil de préparation et d'accueil des portes ouvertes du collège Lili Keller R
 - `public/` : l'appli (fonctionne hors ligne, installable sur l'écran d'accueil).
 - `public/enquete.html` (adresse `/enquete`) : enquête de satisfaction anonyme des familles, avec QR code ; `/enquete?borne` pour une tablette à la sortie. Questions modifiables et résultats dans l'onglet Enquête.
 - `netlify/functions/enquete.mjs` : publication de l'enquête et des infos publiques, réception des réponses.
-- `public/ecran.html` (adresse `/ecran`) : écran de la salle des élèves accompagnateurs (télé ou tablette) : appels « ta famille est arrivée » avec signal sonore, pointage des arrivées et des retours de visite. Code écran séparé (2468 par défaut, modifiable dans Accueil jour J).
+- `public/ecran.html` (adresse `/ecran`) : écran de la salle des élèves accompagnateurs (télé ou tablette) : appels « ta famille est arrivée » avec signal sonore, pointage des arrivées et des retours de visite. Code écran séparé (2335 par défaut, modifiable dans Accueil jour J).
 - `netlify/functions/ecran.mjs` : vue réduite pour l'écran (prénoms, classes, appels) et pointages.
 - `public/volontaire.html` (adresse `/volontaire`) : inscription en ligne des élèves volontaires (visites, atelier, famille à accompagner, disponibilités), sans accès à l'appli. Validation dans l'onglet Élèves.
 - `netlify/functions/volontaire.mjs` : réception des inscriptions des élèves.

@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 
 const DEFAULT_CODE = "1411";
 const DEFAULT_SALT = "portes-ouvertes-lkr-defaut";
-const DEFAULT_ECRAN = "2468";
+const DEFAULT_ECRAN = "2335";
 const ECRAN_SALT = "ecran-portes-ouvertes-lkr";
 const hash = (code, salt) => crypto.createHash("sha256").update(`${salt}:${code}`).digest("hex");
 const json = (obj, status = 200) =>

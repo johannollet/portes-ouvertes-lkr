@@ -866,7 +866,7 @@ function optStudents(f,cur){const c=C(),t=tmin(f.slot),busy=busyMap(new Set([f.i
 
 /* ============ Écran de la salle des élèves : appels et pointages ============ */
 const ecranOn=()=>C().ecranActif!==false;
-const ecranCode=()=>C().ecranCode||"2468";
+const ecranCode=()=>C().ecranCode||"2335";
 const callOf=sid=>{const a=S.appels[sid];return a&&a.etat!=="fini"?a:null;};
 async function callStudent(fid,sid){const f=S.familles[fid];const t=fmt(nowMin());
   await patch("familles",fid,{statut:"arrive",attend:sid,hArrivee:f.hArrivee||t});
