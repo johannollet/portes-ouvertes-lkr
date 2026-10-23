@@ -19,6 +19,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .brand{display:flex;gap:14px;align-items:center}.mark{border:3px solid var(--ink);padding:4px 8px 2px;font:800 15px/0.95 var(--f-d);text-transform:uppercase}.mark small{display:block;color:var(--accent);font-size:9px;letter-spacing:.3em}
 .brand h1{font:700 clamp(20px,2.4vw,32px) var(--f-d);margin:0}.brand p{margin:0;color:var(--muted)}
 .clock{font:700 clamp(28px,4vw,56px) var(--f-m)}
+.vbtn{margin-top:6px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:13px}.vbtn.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,var(--line))}
 .st{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;background:var(--ok)}.dot.err{background:#ff6b6b}
 /* appels */
 #calls{display:grid;gap:12px;margin:16px 0 0}
@@ -59,7 +60,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 <body>
 <header class="top">
   <div class="brand"><div class="mark"><small>Invitation</small>Portes<br>ouvertes</div><div><h1>Salle des élèves accompagnateurs</h1><p id="sub">Reste ici : ton prénom s'affichera quand ta famille arrivera.</p></div></div>
-  <div style="text-align:right"><div class="clock" id="clk">--h--</div><div class="st" id="st"><span class="dot"></span>Connexion…</div></div>
+  <div style="text-align:right"><div class="clock" id="clk">--h--</div><div class="st" id="st"><span class="dot"></span>Connexion…</div><button class="vbtn" id="vBtn" type="button"></button></div>
 </header>
 <section id="calls" aria-live="assertive"></section>
 <div class="main">
@@ -79,6 +80,19 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const tc=s=>String(s||"").toLowerCase().replace(/(^|[\s'-])\S/g,m=>m.toUpperCase());
 const KEY="po-lkr-ecran";let CODE="";try{CODE=localStorage.getItem(KEY)||"";}catch(e){}
 let V={eleves:[],appels:[],prochaines:[]},ETAG="",CLS="all",Q="",seen=new Set(),first=true,audio=null,sound=false,busy=false;
+/* annonce vocale des appels (synthèse vocale du navigateur, en français) */
+let VOICE=true;try{VOICE=localStorage.getItem(KEY+"-voix")!=="non";}catch(e){}
+const SPOKEN={};const RAPPEL_S=45,RAPPELS_MAX=2;
+function frVoice(){try{const vs=speechSynthesis.getVoices();return vs.find(v=>/^fr(-|_)FR/i.test(v.lang)&&/google|amélie|amelie|thomas|audrey|marie|julie|denise|henri/i.test(v.name))||vs.find(v=>/^fr(-|_)FR/i.test(v.lang))||vs.find(v=>/^fr/i.test(v.lang))||null;}catch(e){return null;}}
+try{speechSynthesis.onvoiceschanged=()=>{};speechSynthesis.getVoices();}catch(e){}
+function speak(t){if(!VOICE||!("speechSynthesis" in window))return;try{const u=new SpeechSynthesisUtterance(t);u.lang="fr-FR";const v=frVoice();if(v)u.voice=v;u.rate=.92;u.pitch=1;u.volume=1;speechSynthesis.speak(u);}catch(e){}}
+const annonce=(a,rappel)=>`${rappel?"Rappel. ":""}${tc(a.prenom)} ${tc(a.nom||a.n)}. ${rappel?"Ta famille t'attend à l'accueil.":"Ta famille est arrivée. Viens à l'accueil, s'il te plaît."}`;
+function drawVoice(){const b=$("#vBtn");if(!b)return;const ok="speechSynthesis" in window;b.hidden=!ok;b.className="vbtn"+(VOICE?" on":"");b.textContent=VOICE?"Annonce vocale : oui":"Annonce vocale : non";}
+function announce(){const now=Date.now();const L=(V.appels||[]).filter(a=>a.etat!=="vient");const say=[];
+  L.forEach(a=>{const k=a.id+a.at;const s=SPOKEN[k];
+    if(!s){SPOKEN[k]={t:now,n:0};if(!first)say.push([a,false]);}
+    else if(now-s.t>=RAPPEL_S*1000&&s.n<RAPPELS_MAX){s.t=now;s.n++;say.push([a,true]);}});
+  if(!say.length)return;chime();setTimeout(()=>say.forEach(([a,r])=>speak(annonce(a,r))),1000);}
 const api=async(op,extra)=>{const r=await fetch("/api/ecran",{method:"POST",cache:"no-store",headers:{"content-type":"application/json"},body:JSON.stringify({op,ecran:CODE,...(extra||{})})});let j={};try{j=await r.json();}catch(e){}
   if(!r.ok){const e=new Error(j.error||("Erreur "+r.status));e.status=r.status;throw e;}return j;};
 function tick(){const d=new Date();$("#clk").textContent=d.getHours()+"h"+String(d.getMinutes()).padStart(2,"0");}setInterval(tick,5000);tick();
@@ -88,16 +102,18 @@ function closeSheet(){$("#ov").innerHTML="";}
 function askCode(msg){sheet(`<h3>Écran élèves</h3><p>Code de l'écran (donné par l'organisateur)</p><input class="code" id="cIn" inputmode="numeric" maxlength="8" type="password"><p class="muted" id="cMsg" style="font-size:15px">${esc(msg||"")}</p><div class="row"><button class="big" id="cOk">Valider</button></div>`,o=>{
   const i=o.querySelector("#cIn");setTimeout(()=>i.focus(),50);const go=async()=>{CODE=i.value.trim();try{await api("login");try{localStorage.setItem(KEY,CODE);}catch(e){}closeSheet();start();}catch(e){o.querySelector("#cMsg").textContent=e.status===401?"Code incorrect.":"Connexion impossible.";}};
   o.querySelector("#cOk").onclick=go;i.onkeydown=e=>{if(e.key==="Enter")go();};});}
-function startSheet(){sheet(`<h3>Démarrer l'écran</h3><p>Touche le bouton pour activer le son des appels et garder l'écran allumé.</p><div class="row"><button class="big" id="go">Démarrer</button><button class="big ghost" id="nos">Sans son</button></div>`,o=>{
-  o.querySelector("#go").onclick=async()=>{try{audio=new (window.AudioContext||window.webkitAudioContext)();await audio.resume();sound=true;chime();}catch(e){}
+function startSheet(){sheet(`<h3>Démarrer l'écran</h3><p>Touche le bouton pour activer le signal sonore et l'annonce vocale des appels, et garder l'écran allumé.</p><div class="row"><button class="big" id="go">Démarrer</button><button class="big ghost" id="gov">Signal sans voix</button><button class="big ghost" id="nos">Sans son</button></div>`,o=>{
+  const startA=async voix=>{VOICE=voix;try{localStorage.setItem(KEY+"-voix",voix?"oui":"non");}catch(e){}drawVoice();try{audio=new (window.AudioContext||window.webkitAudioContext)();await audio.resume();sound=true;chime();}catch(e){}if(voix)setTimeout(()=>speak("Écran des élèves prêt."),900);
     try{await navigator.wakeLock.request("screen");}catch(e){}try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch(e){}closeSheet();};
-  o.querySelector("#nos").onclick=()=>closeSheet();});}
+  o.querySelector("#gov").onclick=()=>startA(false);
+  o.querySelector("#go").onclick=()=>startA(true);
+  o.querySelector("#nos").onclick=()=>{VOICE=false;try{localStorage.setItem(KEY+"-voix","non");}catch(e){}drawVoice();closeSheet();};});}
 async function poll(){try{const j=await api("state",{etag:ETAG});$("#st").innerHTML='<span class="dot"></span>À jour';if(!j.same){ETAG=j.etag;V=j;draw();}}
   catch(e){if(e.status===401){CODE="";try{localStorage.removeItem(KEY);}catch(_){}askCode("Le code de l'écran a changé.");return;}$("#st").innerHTML='<span class="dot err"></span>Hors ligne, nouvelle tentative…';}}
 function draw(){const L=V.appels||[];let fresh=false;
   $("#calls").innerHTML=L.map(a=>{const nw=!seen.has(a.id+a.at);if(nw&&!first)fresh=true;return `<div class="call ${a.etat==="vient"?"vient":""} ${nw&&!first?"new":""}"><div><div class="who">${esc(tc(a.prenom))} ${esc(a.n)}.<small>${esc(a.classe)}</small></div>
     <div class="msg">${a.etat==="vient"?"C'est noté, va vite à l'accueil !":`Ta famille <b>${esc(a.famille)}</b> est arrivée : viens à l'accueil.`}</div></div>${a.etat==="vient"?"":`<button class="big ok" data-ack="${esc(a.id)}">J'arrive</button>`}</div>`;}).join("");
-  L.forEach(a=>seen.add(a.id+a.at));if(fresh)chime();first=false;
+  L.forEach(a=>seen.add(a.id+a.at));announce();first=false;
   document.querySelectorAll("[data-ack]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("ack",{id:b.dataset.ack});ETAG="";poll();}catch(e){b.disabled=false;}});
   const el=V.eleves||[];const classes=[...new Set(el.map(e=>e.classe).filter(Boolean))].sort((a,b)=>b.charAt(0).localeCompare(a.charAt(0))||a.localeCompare(b));
   $("#cls").innerHTML=[["all","Toutes"],...[...new Set(classes.map(c=>c[0]))].sort().reverse().map(n=>["n"+n,n+"e"]),...classes.map(c=>[c,c])].map(([k,l])=>`<button class="chip" data-c="${esc(k)}" aria-pressed="${CLS===k}">${esc(l)}</button>`).join("");
@@ -118,7 +134,8 @@ function pick(id){const e=(V.eleves||[]).find(x=>x.id===id);if(!e)return;const n
     if(ok)ok.onclick=async()=>{if(busy)return;busy=true;ok.disabled=true;try{await api("checkin",{id,kind:act[0]});sheet(`<div class="check">✓</div><h3>Merci ${esc(tc(e.prenom))} !</h3><p>${act[0]==="retour"?"Bon retour. ":""}Reste dans la salle : ton prénom s'affichera ici quand une famille t'attendra.</p>`);setTimeout(closeSheet,3500);$("#q").value="";Q="";ETAG="";poll();}
       catch(er){sheet(`<h3>Oups</h3><p>${esc(er.message)}</p><div class="row"><button class="big ghost" id="noA">Fermer</button></div>`,o2=>o2.querySelector("#noA").onclick=closeSheet);}busy=false;};});}
 $("#q").oninput=e=>{Q=e.target.value.trim();draw();};
-let started=false;function start(){if(started)return;started=true;poll();setInterval(poll,2500);startSheet();}
+$("#vBtn").onclick=()=>{VOICE=!VOICE;try{localStorage.setItem(KEY+"-voix",VOICE?"oui":"non");}catch(e){}drawVoice();if(VOICE)speak("Annonce vocale activée.");else{try{speechSynthesis.cancel();}catch(e){}}};drawVoice();
+let started=false;function start(){if(started)return;started=true;poll();setInterval(poll,2500);setInterval(()=>{if(!first)announce();},5000);startSheet();}
 if(!CODE)askCode();else{api("login").then(start).catch(e=>askCode(e.status===401?"":"Connexion impossible, vérifie le réseau."));}
 </script>
 </body></html>

@@ -41,7 +41,7 @@ function view(st) {
   }));
   const appels = Object.values(st.appels || {}).filter((a) => a && a.etat !== "fini").map((a) => {
     const e = el[a.eleve] || {};
-    return { id: a.eleve, prenom: String(e.prenom || "").trim(), n: String(e.nom || "").trim().charAt(0).toUpperCase(), classe: e.classe || "", famille: a.familleNom || "", at: a.at || "", etat: a.etat || "appel" };
+    return { id: a.eleve, prenom: String(e.prenom || "").trim(), nom: String(e.nom || "").trim(), n: String(e.nom || "").trim().charAt(0).toUpperCase(), classe: e.classe || "", famille: a.familleNom || "", at: a.at || "", etat: a.etat || "appel" };
   });
   const prochaines = Object.entries(prochaine).filter(([, t]) => t >= now - 15 && t <= now + 40).sort((a, b) => a[1] - b[1])
     .map(([id, t]) => ({ t: fmt(t), prenom: String((el[id] || {}).prenom || "").trim(), n: String((el[id] || {}).nom || "").charAt(0).toUpperCase(), present: (el[id] || {}).presence === "present", visite: enVisite.has(id) }));
