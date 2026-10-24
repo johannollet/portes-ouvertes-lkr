@@ -248,3 +248,5 @@ tr.prio-row td{background:color-mix(in srgb,var(--sun) 7%,var(--card))}
 .slotfill .sf b{font:700 14px var(--f-mono)}.slotfill .sf span{font-size:12px;color:var(--muted)}
 .slotfill .sf i{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}
 .slotfill .sf.full{border-color:var(--warn)}.slotfill .sf.full span{color:var(--warn);font-weight:700}
+.fenq{border:.5mm solid var(--fa);border-radius:2.5mm;padding:2.5mm 3mm;background:color-mix(in srgb,var(--fa) 7%,#fff)}
+.fenq b{display:block;color:var(--fa);font-family:"League Spartan",sans-serif;font-size:1.25em;margin-bottom:.8mm}.fenq p{font-weight:400}
