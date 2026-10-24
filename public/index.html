@@ -313,6 +313,45 @@ const profMessage=()=>`Bonjour,\n\nPour les portes ouvertes du ${C().dateTexte},
 const pendingCount=a=>Object.keys(a.changes||{}).length+(a.nouveau?1:0);
 const atSorted=()=>Object.values(S.ateliers).sort((a,b)=>(a.ordre??99)-(b.ordre??99)||norm(a.nom).localeCompare(norm(b.nom)));
 
+/* ---------- Récapitulatif des salles pour l'intendance ---------- */
+const SALLES_EXTRA_DEF="Salle des élèves accompagnateurs (à préciser) : Attente des élèves, écran d'appel (ordinateur + écran, prise, réseau)";
+function SR(){const r=S.config.salles||{};return {ouv:r.ouv||"8h30",ferm:r.ferm||"12h30",extra:r.extra??SALLES_EXTRA_DEF,note:r.note??"Merci de prévoir l'ouverture, le chauffage et la fermeture des salles ci-dessous."};}
+function setSR(p,rerender=false){S.config.salles={...SR(),...p};saveLocal();if(rerender)schedule();else{clearTimeout(rT2);rT2=setTimeout(schedule,1200);}}
+/* une ligne par salle : ateliers regroupés quand plusieurs partagent la même salle */
+function sallesData(){const map=new Map(),sans=[];
+  atSorted().forEach(a=>{const sl=String(a.salle||"").trim();if(!sl){sans.push(a);return;}const k=norm(sl);if(!map.has(k))map.set(k,{salle:sl,etage:a.etage||"",ats:[]});const r=map.get(k);if(!r.etage&&a.etage)r.etage=a.etage;r.ats.push(a);});
+  const rows=[...map.values()].map(r=>({salle:r.salle,etage:r.etage,usage:r.ats.map(a=>a.nom).join(" + "),resp:[...new Set(r.ats.map(a=>a.prof).filter(Boolean))].join(", "),
+    acces:[...new Set(r.ats.map(accesStr))].join(" / "),materiel:r.ats.map(a=>String(a.materiel||"").trim()).filter(Boolean).join(" ; "),eleves:r.ats.reduce((n,a)=>n+elevesList(a.eleves).length,0),partagee:r.ats.length>1,atelier:true}));
+  const F=FD();const ord=e=>{const i=F.etages.indexOf(e);return i<0?99:i;};
+  rows.sort((a,b)=>ord(a.etage)-ord(b.etage)||a.salle.localeCompare(b.salle,"fr",{numeric:true}));
+  lines(SR().extra).forEach(l=>{const i=l.indexOf(":");rows.push({salle:i>0?l.slice(0,i).trim():l,etage:"",usage:i>0?l.slice(i+1).trim():"",resp:"",acces:"",materiel:"",eleves:0,atelier:false});});
+  return {rows,sans};}
+function sallesCard(){const {rows,sans}=sallesData(),sr=SR();
+  return `<details class="card" id="salDet" style="margin-top:16px" ${UI.salOpen?"open":""}><summary style="cursor:pointer;list-style:none"><div class="card-h" style="margin:0"><h3>Récapitulatif des salles pour l'intendance</h3><span class="row small"><span class="muted">${rows.length} salle(s)</span>${sans.length?`<span class="pill warn">${sans.length} atelier(s) sans salle</span>`:""}</span></div></summary>
+  <div style="display:grid;gap:12px;margin-top:12px">
+    <div class="row"><button class="btn sm pri" id="salPdf">Imprimer le récapitulatif (PDF)</button><button class="btn sm" id="salCopy">Copier pour un mail</button><span class="small muted">Mis à jour automatiquement à partir des ateliers.</span></div>
+    ${sans.length?`<div class="alert">Salle à définir pour : ${sans.map(a=>`<b>${esc(a.nom)}</b>`).join(", ")}.</div>`:""}
+    <div class="tbl-wrap"><table><thead><tr><th>Salle</th><th>Utilisation</th><th>Responsable</th><th>Horaires</th><th>Matériel demandé</th><th>Élèves</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td class="name">${esc(r.salle)}${r.etage?`<div class="small muted" style="font-weight:400">${esc(r.etage)}</div>`:""}${r.partagee?' <span class="pill warn">partagée</span>':""}</td><td class="small">${esc(r.usage)}</td><td class="small">${esc(r.resp)||'<span class="muted">—</span>'}</td><td class="small">${esc(r.acces)}</td><td class="small">${esc(r.materiel)||'<span class="muted">—</span>'}</td><td class="t">${r.eleves||""}</td></tr>`).join("")||'<tr><td colspan="6" class="muted">Aucune salle renseignée.</td></tr>'}
+    </tbody></table></div>
+    <details><summary class="small muted" style="cursor:pointer">Réglages : horaires d'ouverture, autres salles, message à l'intendance</summary><div style="display:grid;gap:10px;margin-top:8px">
+      <div class="fgrid"><label class="f">Ouverture des salles<input type="text" id="salOuv" value="${esc(sr.ouv)}"></label><label class="f">Fermeture<input type="text" id="salFerm" value="${esc(sr.ferm)}"></label></div>
+      <label class="f">Autres salles occupées (une par ligne : « Salle : utilisation »)<textarea id="salExtra" rows="3">${esc(sr.extra)}</textarea></label>
+      <label class="f">Message en tête du récapitulatif<input type="text" id="salNote" value="${esc(sr.note)}"></label></div></details>
+  </div></details>`;}
+function sallesTexte(){const c=C(),sr=SR(),{rows,sans}=sallesData();
+  return `Portes ouvertes du ${c.dateTexte} - salles occupées\nOuverture des salles à ${sr.ouv}, fermeture à ${sr.ferm}.\n${sr.note}\n\n`+rows.map(r=>`- ${r.salle}${r.etage?" ("+r.etage+")":""} : ${r.usage}${r.resp?" - "+r.resp:""}${r.materiel?"\n  Matériel : "+r.materiel:""}`).join("\n")+(sans.length?`\n\nSalle encore à définir : ${sans.map(a=>a.nom).join(", ")}.`:"")+`\n\n${c.responsable}`;}
+function pdfSalles(){const c=C(),sr=SR(),{rows,sans}=sallesData();if(!rows.length)return toast("Aucune salle renseignée dans les ateliers.");
+  const doc=newPdf({orientation:"landscape"});if(!doc)return;
+  const data=rows.map(r=>["",`${r.salle}${r.etage?"\n"+r.etage:""}${r.partagee?"\n(partagée)":""}`,r.usage,r.resp,r.acces,r.materiel,r.eleves?String(r.eleves):""]);
+  if(sr.note)data.unshift({section:sr.note});
+  if(sans.length)data.push({section:`Salle à définir : ${sans.map(a=>a.nom).join(", ")}`});
+  tablePdf(doc,`Salles occupées - portes ouvertes du ${c.dateTexte}`,`${c.college} · ouverture des salles à ${sr.ouv}, fermeture à ${sr.ferm} · contact : ${c.responsable}`,
+    [{t:"",w:8,box:1},{t:"Salle",w:40},{t:"Utilisation",w:70},{t:"Responsable",w:40},{t:"Horaires",w:32},{t:"Matériel demandé",w:68},{t:"Élèves",w:15}],data,{landscape:true});
+  savePdf(doc,"salles_occupees_portes_ouvertes.pdf");}
+function bindSalles(v){const dt=$("#salDet");if(!dt)return;dt.addEventListener("toggle",()=>{UI.salOpen=dt.open;});
+  $("#salPdf").onclick=pdfSalles;$("#salCopy").onclick=()=>navigator.clipboard.writeText(sallesTexte()).then(()=>toast("Récapitulatif copié : colle-le dans un mail à l'intendance."),()=>toast("Copie impossible."));
+  $("#salOuv").onchange=e=>setSR({ouv:e.target.value.trim()});$("#salFerm").onchange=e=>setSR({ferm:e.target.value.trim()});$("#salExtra").onchange=e=>setSR({extra:e.target.value},true);$("#salNote").onchange=e=>setSR({note:e.target.value.trim()});}
 function vAteliers(v){fetchFiches(false);const at=atSorted();const F=FD();
   const recues=at.filter(a=>a.ficheId).length,pend=at.filter(a=>pendingCount(a)),elv=at.reduce((n,a)=>n+elevesList(a.eleves).length,0),shown=at.filter(a=>a.afficher!==false).length;
   v.innerHTML=`<div class="row" style="align-items:flex-end;margin-bottom:12px"><div style="flex:1;min-width:240px"><h2>Ateliers</h2><p class="lead" style="margin:0">Les professeurs remplissent leur fiche en ligne et elle arrive ici. Tu peux tout corriger : ta version reste prioritaire. Si un professeur modifie sa fiche ensuite, tu choisis d'appliquer ou non chaque changement.</p></div>
@@ -342,7 +381,9 @@ function vAteliers(v){fetchFiches(false);const at=atSorted();const F=FD();
     <td>${esc(a.salle||"")}${a.etage?`<div class="small muted">${esc(a.etage)}</div>`:a.salle?"":'<span class="muted">—</span>'}</td><td>${esc(a.prof||"")||'<span class="muted">—</span>'}</td><td class="small">${esc(accesStr(a))}</td>
     <td class="small">${elevesList(a.eleves).length||(typeof a.eleves==="string"&&a.eleves?"✓":"")}${a.besoinEleves?` <span class="pill warn">+${a.besoinEleves} demandés</span>`:""}</td>
     <td><input type="checkbox" data-aff="${a.id}" ${a.afficher!==false?"checked":""} aria-label="Afficher sur le feuillet"></td><td><button class="btn ${pendingCount(a)?"pri":"ghost"} sm" data-editat="${a.id}">${pendingCount(a)?"Valider":"Modifier"}</button></td></tr>`).join("")||`<tr><td colspan="8" class="muted">Aucun atelier pour l'instant.</td></tr>`}
-  </tbody></table></div>`;
+  </tbody></table></div>
+  ${sallesCard()}`;
+  bindSalles(v);
   const qb=$("#profQr");if(qb&&typeof qrcode!=="undefined"){try{const cv=qrCanvas(profLink(),3);cv.style.width="96px";cv.style.height="96px";qb.appendChild(cv);}catch(e){}}else if(qb)qb.hidden=true;
   const copy=(t,ok)=>navigator.clipboard.writeText(t).then(()=>toast(ok),()=>toast("Copie impossible : sélectionne le texte à la main."));
   $("#cpMsg").onclick=()=>copy(profMessage(),"Message copié : colle-le dans un mail ou sur l'ENT.");$("#cpLink").onclick=()=>copy(profLink(),"Lien copié.");
@@ -1145,6 +1186,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
         <button class="btn" id="g1" style="justify-content:space-between">Convocations élèves remplies (PDF, 2 par page)<span class="muted small">${Object.keys(S.eleves).length} élèves</span></button>
         <button class="btn" id="g2" style="justify-content:space-between">Planning élèves par heure d'arrivée (PDF)<span class="muted small">pour la table d'accueil</span></button>
         <button class="btn" id="g3" style="justify-content:space-between">Liste d'accueil des familles par créneau (PDF)<span class="muted small">secours papier</span></button>
+        <button class="btn" id="g5" style="justify-content:space-between">Récapitulatif des salles occupées pour l'intendance (PDF)<span class="muted small">${sallesData().rows.length} salles</span></button>
         <button class="btn" id="g4" style="justify-content:space-between">Tout exporter en Excel<span class="muted small">familles, élèves, ateliers</span></button>
         <a class="btn" href="affiche-eleves.html" target="_blank" rel="noopener" style="justify-content:space-between">Affiche « mode d'emploi » de la salle des élèves (A4) ↗<span class="muted small">pointage, appels, retours</span></a>
       </div></div>
@@ -1166,7 +1208,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
   $("#qrPng").onclick=()=>{const cv=qrCanvas(inscUrl(),12);cv.toBlob(b=>saveFile("qrcode_inscription_portes_ouvertes.png",b));};
   $("#qrAff").onclick=pdfAffiche;
   $("#copyUrl").onclick=()=>{navigator.clipboard.writeText(inscUrl()).then(()=>toast("Lien copié."),()=>{const i=$("#evUrl");i.select();toast("Sélectionné : Ctrl+C pour copier.");});};
-  $("#g1").onclick=pdfConvocations;$("#g2").onclick=pdfPlanning;$("#g3").onclick=pdfAccueil;$("#g4").onclick=xlsExport;bindMerci();
+  $("#g1").onclick=pdfConvocations;$("#g2").onclick=pdfPlanning;$("#g3").onclick=pdfAccueil;$("#g4").onclick=xlsExport;$("#g5").onclick=pdfSalles;bindMerci();
   ["college","ville","date","dateTexte","horaires","responsable","lieuRdv","dateCourrier","signature"].forEach(k=>{$("#k_"+k).onchange=e=>putConfig({[k]:e.target.value.trim()});});
   $("#k_slots").onchange=e=>{const s=e.target.value.split(/[,;\s]+/).map(tmin).filter(x=>x!=null).sort((a,b)=>a-b).map(fmt);if(!s.length)return toast("Aucun créneau reconnu.");putConfig({slots:[...new Set(s)]});};
   const cf=$("#codeF");if(cf)cf.onsubmit=async e=>{e.preventDefault();const n=$("#newCode").value.trim();if(!/^\d{4,8}$/.test(n))return toast("Le code doit faire 4 à 8 chiffres.");try{const j=await api("code",{newCode:n});SY.code=n;SY.cfg={salt:j.salt,hash:j.hash};persistSY();$("#newCode").value="";toast("Code changé : les autres appareils devront saisir le nouveau code.");}catch(er){toast("Changement impossible : "+er.message);}};
