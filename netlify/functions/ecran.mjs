@@ -6,6 +6,7 @@
 //   state   : { ecran, etag? }          -> { same } | { etag, eleves, appels, prochaines, info }
 //   checkin : { ecran, id, kind }       -> { ok, prenom }      (kind = "arrivee" | "retour")
 //   ack     : { ecran, id }             -> { ok }              (id = élève appelé)
+//   undo    : { ecran, id, kind }       -> { ok }              (annule un pointage fait par erreur)
 //   setcode : { code, newCode }         -> { ok }              (organisateur : code d'accès de l'appli)
 import { getStore } from "@netlify/blobs";
 import crypto from "node:crypto";
@@ -73,7 +74,7 @@ export default async (req) => {
       if (b.etag && e.etag === b.etag) return json({ same: true });
       return json({ etag: e.etag, ...view(JSON.parse(e.data)) });
     }
-    if (b.op === "checkin" || b.op === "ack") {
+    if (b.op === "checkin" || b.op === "ack" || b.op === "undo") {
       for (let i = 0; i < 5; i++) {
         const e = await store.getWithMetadata("state", { type: "text" });
         if (!e) return json({ error: "Aucune donnée." }, 404);
@@ -81,7 +82,19 @@ export default async (req) => {
         const el = (st.eleves || {})[b.id];
         if (!el) return json({ error: "Élève inconnu." }, 404);
         const t = fmt(nowParis());
-        if (b.op === "ack") {
+        if (b.op === "undo") {
+          if (b.kind === "retour") {
+            // remet en visite la dernière famille ramenée par cet élève
+            const f = Object.values(st.familles || {}).filter((x) => x.statut === "fini" && x.eleve === b.id && x.hRetour)
+              .sort((x, y) => (tmin(y.hRetour) || 0) - (tmin(x.hRetour) || 0))[0];
+            if (f) { f.statut = "visite"; f.hRetour = ""; }
+          } else {
+            const enVisite = Object.values(st.familles || {}).some((x) => x.statut === "visite" && x.eleve === b.id);
+            const appel = (st.appels || {})[b.id];
+            if (enVisite || (appel && appel.etat !== "fini")) return json({ error: "Impossible : tu as déjà une famille. Va voir l'accueil." }, 409);
+            el.presence = ""; el.arrivee = "";
+          }
+        } else if (b.op === "ack") {
           const a = (st.appels || {})[b.id];
           if (!a || a.etat === "fini") return json({ ok: true });
           a.etat = "vient"; a.ackAt = t;

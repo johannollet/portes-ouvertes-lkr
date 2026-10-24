@@ -1,4 +1,4 @@
-const C="portes-ouvertes-lkr-v16";
+const C="portes-ouvertes-lkr-v17";
 const F=["./","index.html","app.css","manifest.json","icon-180.png","icon-192.png","icon-512.png",
   "docs/flyers_portes_ouvertes.pdf","docs/college.jpg",
   "docs/th_flyers-1.png","affiche-eleves.html"];

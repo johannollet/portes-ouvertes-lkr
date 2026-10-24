@@ -52,6 +52,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px;width:min(560px,100%);display:grid;gap:16px;text-align:center}
 .sheet h3{font:800 clamp(28px,4vw,44px) var(--f-d);margin:0}.sheet p{margin:0;font-size:19px}
 .sheet .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.sheet .undo{background:none;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font:600 16px var(--f-b,inherit);padding:12px 14px;cursor:pointer}
+.sheet .undo:hover{color:var(--ink,#fff);border-color:currentColor}
 .code{font:700 32px var(--f-m);text-align:center;letter-spacing:.3em;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);width:100%}
 .check{width:84px;height:84px;border-radius:50%;background:var(--ok);color:#06210f;font-size:46px;display:grid;place-items:center;margin:0 auto}
 @media (prefers-reduced-motion:reduce){.call.new{animation:none}}
@@ -126,13 +128,22 @@ function draw(){const L=V.appels||[];let fresh=false;
   document.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>pick(b.dataset.id));
   $("#kSalle").textContent=el.filter(e=>e.presence==="present"&&!e.visite&&e.guide).length;$("#kVis").textContent=el.filter(e=>e.visite).length;
   $("#next").innerHTML=(V.prochaines||[]).map(p=>`<div class="li"><span><span class="t">${esc(p.t)}</span> ${esc(tc(p.prenom))} ${esc(p.n)}.</span><span class="muted">${p.visite?"en visite":p.present?"dans la salle":"pas pointé"}</span></div>`).join("")||'<p class="muted">Aucune visite dans les 40 prochaines minutes.</p>';}
-function pick(id){const e=(V.eleves||[]).find(x=>x.id===id);if(!e)return;const nm=`${tc(e.prenom)} ${e.n}.`;
+function pick(id){clearTimeout(UNDO_T);const e=(V.eleves||[]).find(x=>x.id===id);if(!e)return;const nm=`${tc(e.prenom)} ${e.n}.`;
   const act=e.visite?["retour","Je reviens de visite"]:e.presence==="present"?null:["arrivee","Je suis arrivé(e)"];
+  const called=(V.appels||[]).some(a=>a.id===id);
   sheet(`<h3>${esc(nm)}</h3><p class="muted">${esc(e.classe)}</p>${act?`<p>Confirme :</p>`:`<p>Tu es déjà pointé(e). ${e.prochaine?`Ta prochaine visite est prévue vers <b>${esc(e.prochaine)}</b>.`:""} Reste dans la salle, ton prénom s'affichera ici.</p>`}
-    <div class="row">${act?`<button class="big ok" id="okA">${act[1]}</button>`:""}<button class="big ghost" id="noA">${act?"Ce n'est pas moi":"OK"}</button></div>`,o=>{
+    <div class="row">${act?`<button class="big ok" id="okA">${act[1]}</button>`:""}<button class="big ghost" id="noA">${act?"Ce n'est pas moi":"OK"}</button></div>
+    ${!act&&!called?`<button class="undo" id="unA">Ce n'est pas moi / je me suis trompé(e) : annuler ce pointage</button>`:""}`,o=>{
     o.querySelector("#noA").onclick=closeSheet;const ok=o.querySelector("#okA");
-    if(ok)ok.onclick=async()=>{if(busy)return;busy=true;ok.disabled=true;try{await api("checkin",{id,kind:act[0]});sheet(`<div class="check">✓</div><h3>Merci ${esc(tc(e.prenom))} !</h3><p>${act[0]==="retour"?"Bon retour. ":""}Reste dans la salle : ton prénom s'affichera ici quand une famille t'attendra.</p>`);setTimeout(closeSheet,3500);$("#q").value="";Q="";ETAG="";poll();}
+    const un=o.querySelector("#unA");if(un)un.onclick=()=>undo(e,"arrivee");
+    if(ok)ok.onclick=async()=>{if(busy)return;busy=true;ok.disabled=true;try{await api("checkin",{id,kind:act[0]});
+        sheet(`<div class="check">✓</div><h3>Merci ${esc(tc(e.prenom))} !</h3><p>${act[0]==="retour"?"Bon retour. ":""}Reste dans la salle : ton prénom s'affichera ici quand une famille t'attendra.</p><button class="undo" id="unB">Je me suis trompé(e) de prénom : annuler</button>`,o2=>o2.querySelector("#unB").onclick=()=>undo(e,act[0]));
+        const t=setTimeout(closeSheet,8000);UNDO_T=t;$("#q").value="";Q="";ETAG="";poll();}
       catch(er){sheet(`<h3>Oups</h3><p>${esc(er.message)}</p><div class="row"><button class="big ghost" id="noA">Fermer</button></div>`,o2=>o2.querySelector("#noA").onclick=closeSheet);}busy=false;};});}
+let UNDO_T=null;
+async function undo(e,kind){if(busy)return;busy=true;clearTimeout(UNDO_T);
+  try{await api("undo",{id:e.id,kind});sheet(`<h3>Pointage annulé</h3><p>${kind==="retour"?`${esc(tc(e.prenom))} ${esc(e.n)}. est de nouveau noté(e) en visite.`:`${esc(tc(e.prenom))} ${esc(e.n)}. n'est plus pointé(e).`} Touche maintenant <b>ton</b> prénom.</p><div class="row"><button class="big ghost" id="noA">OK</button></div>`,o=>o.querySelector("#noA").onclick=closeSheet);UNDO_T=setTimeout(closeSheet,5000);ETAG="";poll();}
+  catch(er){sheet(`<h3>Oups</h3><p>${esc(er.message)}</p><div class="row"><button class="big ghost" id="noA">Fermer</button></div>`,o=>o.querySelector("#noA").onclick=closeSheet);}busy=false;}
 $("#q").oninput=e=>{Q=e.target.value.trim();draw();};
 $("#vBtn").onclick=()=>{VOICE=!VOICE;try{localStorage.setItem(KEY+"-voix",VOICE?"oui":"non");}catch(e){}drawVoice();if(VOICE)speak("Annonce vocale activée.");else{try{speechSynthesis.cancel();}catch(e){}}};drawVoice();
 let started=false;function start(){if(started)return;started=true;poll();setInterval(poll,2500);setInterval(()=>{if(!first)announce();},5000);startSheet();}
