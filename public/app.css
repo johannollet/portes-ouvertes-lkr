@@ -250,3 +250,11 @@ tr.prio-row td{background:color-mix(in srgb,var(--sun) 7%,var(--card))}
 .slotfill .sf.full{border-color:var(--warn)}.slotfill .sf.full span{color:var(--warn);font-weight:700}
 .fenq{border:.5mm solid var(--fa);border-radius:2.5mm;padding:2.5mm 3mm;background:color-mix(in srgb,var(--fa) 7%,#fff)}
 .fenq b{display:block;color:var(--fa);font-family:"League Spartan",sans-serif;font-size:1.25em;margin-bottom:.8mm}.fenq p{font-weight:400}
+/* liens des pages publiques */
+.links{display:grid;gap:0}
+.links .lk{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.links .lk:first-child{border-top:0;padding-top:0}
+.links .lku{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent)}
+@media (max-width:700px){.links .lk{flex-direction:column;align-items:stretch}.links .lk .row{flex-wrap:wrap!important}}
+.f>input,.f>select,.f>textarea{min-width:0;max-width:100%}
+.row>div[style*="display:grid"]{grid-template-columns:minmax(0,1fr)}

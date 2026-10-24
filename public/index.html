@@ -242,6 +242,26 @@ const ST={inscrit:["Inscrite",""],arrive:["Arrivée, attend",'warn'],visite:["En
 const stPill=f=>{const [l,k]=ST[f.statut||"inscrit"];return `<span class="pill ${k}">${l}</span>`;};
 
 /* ---------- Préparation ---------- */
+/* ---------- Liens vers les pages publiques ---------- */
+function pubLinks(){const o=location.origin,eq=EQ();return [
+  {k:"insc",t:"Inscription des familles",p:"/inscription",pour:"Parents (flyers, mail aux écoles, site du collège)",st:IC().ouvert,tab:"inscr"},
+  {k:"atelier",t:"Fiche atelier des professeurs",p:"/atelier",pour:"Collègues",info:`code profs ${profCode()}`,tab:"ateliers"},
+  {k:"vol",t:"Inscription des élèves volontaires",p:"/volontaire",pour:"Élèves (ENT, Pronote)",st:VC().ouvert,tab:"eleves"},
+  {k:"ecran",t:"Écran de la salle des élèves",p:"/ecran",pour:"Télé ou tablette de la salle, le jour J",info:`code écran ${ecranCode()}`,tab:"accueil"},
+  {k:"enq",t:"Enquête de satisfaction",p:"/enquete",pour:"Parents, après la visite",st:eq.ouverte!==false,tab:"enquete"},
+  {k:"borne",t:"Enquête en mode borne",p:"/enquete?borne",pour:"Tablette posée à la sortie (repart à zéro après chaque réponse)",st:eq.ouverte!==false,tab:"enquete"},
+  {k:"affiche",t:"Affiche « mode d'emploi » des élèves",p:"/affiche-eleves.html",pour:"À imprimer pour la salle des élèves"}].map(l=>({...l,url:o+l.p}));}
+function linksCard(){return `<div class="card" id="linksCard" style="margin-top:16px"><div class="card-h"><h3>Liens des pages publiques</h3><span class="small muted">Ces pages ne donnent accès à aucune donnée de l'appli.</span></div>
+  <div class="links">${pubLinks().map(l=>`<div class="lk"><div style="min-width:0"><div class="row" style="gap:6px"><b>${esc(l.t)}</b>${l.st===undefined?"":l.st?'<span class="pill ok">ouverte</span>':'<span class="pill">fermée</span>'}${l.info?`<span class="pill">${esc(l.info)}</span>`:""}</div>
+    <div class="small muted">${esc(l.pour)}</div><a class="small t lku" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.replace(/^https?:\/\//,""))}</a></div>
+    <div class="row" style="gap:6px;flex-wrap:nowrap"><a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener">Ouvrir ↗</a><button class="btn sm" data-lkcp="${l.k}">Copier</button><button class="btn sm" data-lkqr="${l.k}">QR</button>${l.tab?`<button class="btn sm ghost" data-lktab="${l.tab}" title="Réglages dans l'appli">Réglages</button>`:""}</div></div>`).join("")}</div></div>`;}
+function bindLinks(v){const L=pubLinks(),g=k=>L.find(x=>x.k===k);
+  v.querySelectorAll("[data-lkcp]").forEach(b=>b.onclick=()=>navigator.clipboard.writeText(g(b.dataset.lkcp).url).then(()=>toast("Lien copié."),()=>toast("Copie impossible.")));
+  v.querySelectorAll("[data-lktab]").forEach(b=>b.onclick=()=>{UI.tab=b.dataset.lktab;try{localStorage.setItem("po-tab",UI.tab);}catch(e){}render();window.scrollTo({top:0});});
+  v.querySelectorAll("[data-lkqr]").forEach(b=>b.onclick=()=>{const l=g(b.dataset.lkqr);if(typeof qrcode==="undefined")return toast("QR code indisponible, recharge la page.");
+    openDlg(esc(l.t),`<div style="display:grid;justify-items:center;gap:10px"><div id="lkQr"></div><span class="small t">${esc(l.url)}</span></div>`,`<button class="btn" data-close>Fermer</button><button class="btn pri" id="lkPng">Télécharger (PNG)</button>`,d=>{
+      const cv=qrCanvas(l.url,8);cv.style.width="240px";cv.style.height="240px";d.querySelector("#lkQr").appendChild(cv);
+      d.querySelector("#lkPng").onclick=()=>qrCanvas(l.url,14).toBlob(bl=>saveFile(`qrcode_${l.k}.png`,bl));});});}
 function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=Object.values(S.eleves);
   const guides=el.filter(isGuide),ateliersEl=el.filter(e=>e.role==="atelier");
   const assigned=fams.filter(f=>f.eleve||f.elevePrevu).length;const at=Object.values(S.ateliers);const atOk=at.filter(a=>a.ficheRecue||a.ficheId).length;
@@ -264,6 +284,7 @@ function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=O
       <form class="row" id="todoF" style="margin-top:10px"><input type="text" id="todoL" placeholder="Nouvelle tâche…" style="flex:1"><input type="date" id="todoD"><button class="btn">Ajouter</button></form>
     </div>
   </div>
+  ${ONLINE?linksCard():""}
   <div class="card" style="margin-top:16px"><div class="card-h"><h3>Ateliers et feuillet d'accueil</h3><div class="row"><button class="btn sm" id="goF2">Feuillet</button><button class="btn sm pri" id="goA2">Ateliers</button></div></div>
     <p class="small muted" style="margin:0 0 8px">${at.length} ateliers · ${at.filter(a=>a.ficheId).length} fiches reçues des professeurs · ${at.filter(a=>pendingCount(a)).length} à valider · ${at.filter(a=>a.afficher!==false).length} sur le feuillet</p>
     <div class="chips">${atSorted().map(a=>`<button class="chip" data-editat="${a.id}"><span class="pdot" style="background:${poleColor(a.pole)};margin:0"></span>${esc(a.nom)}${pendingCount(a)?' <span class="pill warn">à valider</span>':""}</button>`).join("")}</div></div>`;
@@ -271,7 +292,7 @@ function vPrep(v){const c=C(),fams=famList().filter(f=>f.statut!=="absent"),el=O
   v.querySelectorAll("[data-deltodo]").forEach(b=>b.onclick=()=>del("taches",b.dataset.deltodo));
   $("#todoF").onsubmit=e=>{e.preventDefault();const l=$("#todoL").value.trim();if(!l)return;put("taches",uid(),{label:l,echeance:$("#todoD").value,fait:false,ordre:todos.length+1});};
   v.querySelectorAll("[data-editat]").forEach(b=>b.onclick=()=>editAtelier(b.dataset.editat));
-  $("#goA2").onclick=()=>{UI.tab="ateliers";render();};$("#goF2").onclick=()=>{UI.tab="feuillet";render();};
+  $("#goA2").onclick=()=>{UI.tab="ateliers";render();};$("#goF2").onclick=()=>{UI.tab="feuillet";render();};if(ONLINE)bindLinks(v);
 }
 const fmtDate=s=>{try{return new Date(s+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"});}catch(e){return s;}};
 /* ============ Ateliers : fiches des professeurs ============ */
@@ -1191,6 +1212,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
         <a class="btn" href="affiche-eleves.html" target="_blank" rel="noopener" style="justify-content:space-between">Affiche « mode d'emploi » de la salle des élèves (A4) ↗<span class="muted small">pointage, appels, retours</span></a>
       </div></div>
   </div>
+  ${ONLINE?linksCard():""}
   ${merciCard()}
   <div class="card" style="margin-top:16px"><div class="card-h"><h3>Textes des convocations et de l'événement</h3></div>
     <div class="fgrid"><label class="f">Collège<input type="text" id="k_college" value="${esc(c.college)}"></label><label class="f">Ville<input type="text" id="k_ville" value="${esc(c.ville)}"></label>
@@ -1208,7 +1230,7 @@ function vDocs(v){const c=C();const nF=famList().filter(f=>f.statut!=="absent").
   $("#qrPng").onclick=()=>{const cv=qrCanvas(inscUrl(),12);cv.toBlob(b=>saveFile("qrcode_inscription_portes_ouvertes.png",b));};
   $("#qrAff").onclick=pdfAffiche;
   $("#copyUrl").onclick=()=>{navigator.clipboard.writeText(inscUrl()).then(()=>toast("Lien copié."),()=>{const i=$("#evUrl");i.select();toast("Sélectionné : Ctrl+C pour copier.");});};
-  $("#g1").onclick=pdfConvocations;$("#g2").onclick=pdfPlanning;$("#g3").onclick=pdfAccueil;$("#g4").onclick=xlsExport;$("#g5").onclick=pdfSalles;bindMerci();
+  $("#g1").onclick=pdfConvocations;$("#g2").onclick=pdfPlanning;$("#g3").onclick=pdfAccueil;$("#g4").onclick=xlsExport;if(ONLINE)bindLinks(v);$("#g5").onclick=pdfSalles;bindMerci();
   ["college","ville","date","dateTexte","horaires","responsable","lieuRdv","dateCourrier","signature"].forEach(k=>{$("#k_"+k).onchange=e=>putConfig({[k]:e.target.value.trim()});});
   $("#k_slots").onchange=e=>{const s=e.target.value.split(/[,;\s]+/).map(tmin).filter(x=>x!=null).sort((a,b)=>a-b).map(fmt);if(!s.length)return toast("Aucun créneau reconnu.");putConfig({slots:[...new Set(s)]});};
   const cf=$("#codeF");if(cf)cf.onsubmit=async e=>{e.preventDefault();const n=$("#newCode").value.trim();if(!/^\d{4,8}$/.test(n))return toast("Le code doit faire 4 à 8 chiffres.");try{const j=await api("code",{newCode:n});SY.code=n;SY.cfg={salt:j.salt,hash:j.hash};persistSY();$("#newCode").value="";toast("Code changé : les autres appareils devront saisir le nouveau code.");}catch(er){toast("Changement impossible : "+er.message);}};
